@@ -1,0 +1,2500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stealth Investigations — Live Agent Script System</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #0d0f14;
+    --surface: #141720;
+    --surface2: #1c2030;
+    --border: #252a3a;
+    --border2: #2e3550;
+    --text: #d4daf0;
+    --text-dim: #7a8299;
+    --text-bright: #f0f4ff;
+
+    --u-bg: #1a1f2e;
+    --u-border: #3a4263;
+    --u-accent: #7b91d0;
+
+    --d-bg: #1f1a14;
+    --d-border: #6b4c20;
+    --d-accent: #e8943a;
+
+    --s-bg: #1a1f1a;
+    --s-border: #3a6040;
+    --s-accent: #5eb870;
+
+    --r-bg: #1a1520;
+    --r-border: #5a3a78;
+    --r-accent: #b07ad0;
+
+    --t-bg: #141a1f;
+    --t-border: #2a4a6a;
+    --t-accent: #4a9fd4;
+
+    --warn-bg: #1f1a10;
+    --warn-border: #5a4a20;
+    --warn-text: #d4a843;
+
+    --branch-bg: #101520;
+    --branch-border: #2a3055;
+    --branch-text: #8090c0;
+
+    --tag-first: #1a2830;
+    --tag-second: #1a2820;
+    --tag-obj: #201a28;
+    --tag-inbound: #1a2020;
+    --tag-followup: #281a1a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ─── HEADER ─── */
+  #header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    flex-wrap: wrap;
+  }
+
+  #header h1 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--u-accent);
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
+
+  .header-sep { color: var(--border2); }
+
+  /* Personality selector */
+  #type-selector {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+
+  .type-btn {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 3px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.05em;
+  }
+
+  .type-btn[data-type="U"] { background: var(--u-bg); border-color: var(--u-border); color: var(--u-accent); }
+  .type-btn[data-type="D"] { background: var(--d-bg); border-color: var(--d-border); color: var(--d-accent); }
+  .type-btn[data-type="S"] { background: var(--s-bg); border-color: var(--s-border); color: var(--s-accent); }
+  .type-btn[data-type="R"] { background: var(--r-bg); border-color: var(--r-border); color: var(--r-accent); }
+  .type-btn[data-type="T"] { background: var(--t-bg); border-color: var(--t-border); color: var(--t-accent); }
+
+  .type-btn.active { filter: brightness(1.4); box-shadow: 0 0 8px currentColor; }
+  .type-btn:hover { filter: brightness(1.2); }
+
+  /* Current node display */
+  #current-node-display {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-left: auto;
+  }
+  #current-node-display span { color: var(--text-bright); }
+
+  /* ─── LAYOUT ─── */
+  #layout {
+    display: flex;
+    height: calc(100vh - 54px);
+  }
+
+  /* ─── LEFT NAV ─── */
+  #nav {
+    width: 220px;
+    min-width: 220px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 8px 0;
+  }
+
+  .nav-section {
+    padding: 6px 12px 2px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+
+  .nav-item {
+    padding: 5px 12px;
+    cursor: pointer;
+    border-left: 2px solid transparent;
+    transition: all 0.12s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .nav-item:hover { background: var(--surface2); color: var(--text-bright); }
+  .nav-item.active { border-left-color: var(--u-accent); background: var(--u-bg); color: var(--text-bright); }
+
+  .nav-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    min-width: 20px;
+  }
+
+  .nav-id {
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  /* ─── MAIN CONTENT ─── */
+  #main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 24px;
+  }
+
+  /* ─── NODE ─── */
+  .node { display: none; }
+  .node.visible { display: block; }
+
+  .node-header {
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .node-id-line {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .node-tag {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 2px;
+    letter-spacing: 0.05em;
+  }
+
+  .tag-first { background: var(--tag-first); color: #5aa0c0; border: 1px solid #2a4a60; }
+  .tag-second { background: var(--tag-second); color: #5ab870; border: 1px solid #2a5030; }
+  .tag-obj { background: var(--tag-obj); color: #a07ad0; border: 1px solid #50306a; }
+  .tag-inbound { background: var(--tag-inbound); color: #5ab8a8; border: 1px solid #2a5048; }
+  .tag-followup { background: var(--tag-followup); color: #c07870; border: 1px solid #6a3028; }
+  .tag-neutral { background: #1a1a20; color: #808090; border: 1px solid #303040; }
+
+  .node-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-bright);
+    letter-spacing: -0.02em;
+  }
+
+  .node-meta {
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--text-dim);
+    font-style: italic;
+  }
+
+  .node-intro {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.7;
+  }
+
+  /* ─── VARIANTS ─── */
+  .variant { display: none; }
+  .variant.visible { display: block; }
+
+  .variant-block {
+    border-radius: 4px;
+    border: 1px solid;
+    margin-bottom: 14px;
+    overflow: hidden;
+  }
+
+  .variant-block[data-v="U"] { background: var(--u-bg); border-color: var(--u-border); }
+  .variant-block[data-v="D"] { background: var(--d-bg); border-color: var(--d-border); }
+  .variant-block[data-v="S"] { background: var(--s-bg); border-color: var(--s-border); }
+  .variant-block[data-v="R"] { background: var(--r-bg); border-color: var(--r-border); }
+  .variant-block[data-v="T"] { background: var(--t-bg); border-color: var(--t-border); }
+  .variant-block[data-v="ALL"] { background: var(--surface2); border-color: var(--border2); }
+
+  .variant-header {
+    padding: 7px 12px;
+    border-bottom: 1px solid;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+
+  .variant-block[data-v="U"] .variant-header { border-color: var(--u-border); color: var(--u-accent); }
+  .variant-block[data-v="D"] .variant-header { border-color: var(--d-border); color: var(--d-accent); }
+  .variant-block[data-v="S"] .variant-header { border-color: var(--s-border); color: var(--s-accent); }
+  .variant-block[data-v="R"] .variant-header { border-color: var(--r-border); color: var(--r-accent); }
+  .variant-block[data-v="T"] .variant-header { border-color: var(--t-border); color: var(--t-accent); }
+  .variant-block[data-v="ALL"] .variant-header { border-color: var(--border2); color: var(--text-dim); }
+
+  .variant-body { padding: 10px 12px; }
+
+  .script-line {
+    background: rgba(255,255,255,0.04);
+    border-left: 3px solid rgba(255,255,255,0.15);
+    padding: 8px 10px;
+    margin: 6px 0;
+    font-size: 13px;
+    color: var(--text-bright);
+    line-height: 1.65;
+    border-radius: 0 3px 3px 0;
+  }
+
+  .agent-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+    margin-bottom: 2px;
+  }
+
+  .cue-note {
+    background: var(--warn-bg);
+    border: 1px solid var(--warn-border);
+    border-radius: 3px;
+    padding: 6px 10px;
+    margin: 6px 0;
+    font-size: 12px;
+    color: var(--warn-text);
+    line-height: 1.55;
+  }
+
+  .cue-note::before {
+    content: '⚠ ';
+    font-weight: 700;
+  }
+
+  /* Detection cues in cue notes */
+  .detection-table {
+    margin: 4px 0;
+    display: grid;
+    gap: 3px;
+  }
+
+  .det-row {
+    display: flex;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-dim);
+    padding: 2px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .det-row:last-child { border-bottom: none; }
+
+  .det-signal { flex: 1; font-style: italic; color: var(--text-dim); }
+  .det-type { font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .det-D { color: var(--d-accent); }
+  .det-S { color: var(--s-accent); }
+  .det-R { color: var(--r-accent); }
+  .det-T { color: var(--t-accent); }
+
+  /* ─── BRANCH LOGIC ─── */
+  .branch-block {
+    background: var(--branch-bg);
+    border: 1px solid var(--branch-border);
+    border-radius: 4px;
+    padding: 10px 12px;
+    margin-top: 16px;
+  }
+
+  .branch-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+
+  .branch-item {
+    font-size: 12px;
+    color: var(--branch-text);
+    padding: 3px 0;
+    padding-left: 12px;
+    position: relative;
+    line-height: 1.5;
+  }
+
+  .branch-item::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    color: var(--text-dim);
+  }
+
+  .branch-node {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--u-accent);
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .branch-node:hover { color: var(--text-bright); }
+
+  .branch-dispo {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--s-accent);
+  }
+
+  /* ─── COMPLIANCE BLOCK ─── */
+  .compliance-block {
+    background: #1a1010;
+    border: 1px solid #6a2020;
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin: 10px 0;
+    font-size: 12px;
+    color: #d06060;
+    font-weight: 500;
+  }
+
+  .compliance-block::before {
+    content: '⚖ COMPLIANCE: ';
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  /* ─── WRONG NUMBER SCENARIOS ─── */
+  .scenario-block {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+  }
+
+  .scenario-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* ─── NAV ARROWS (bottom) ─── */
+  #nav-arrows {
+    position: fixed;
+    bottom: 16px;
+    right: 20px;
+    display: flex;
+    gap: 8px;
+    z-index: 50;
+  }
+
+  .nav-arrow {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--text-dim);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    padding: 6px 14px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .nav-arrow:hover { background: var(--border2); color: var(--text-bright); }
+
+  /* ─── SCROLLBAR ─── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  /* ─── UNIVERSAL VARIANT (ALL TYPES) ─── */
+  .universal-note {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 3px;
+    padding: 6px 10px;
+    font-size: 12px;
+    color: var(--text-dim);
+    font-style: italic;
+    margin-bottom: 8px;
+  }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1>STEALTH INVESTIGATIONS</h1>
+  <span class="header-sep">|</span>
+  <div id="type-selector">
+    <button class="type-btn active" data-type="U" onclick="setType('U')">UNDETERMINED</button>
+    <button class="type-btn" data-type="D" onclick="setType('D')">DIRECTOR</button>
+    <button class="type-btn" data-type="S" onclick="setType('S')">SOCIALIZER</button>
+    <button class="type-btn" data-type="R" onclick="setType('R')">RELATER</button>
+    <button class="type-btn" data-type="T" onclick="setType('T')">THINKER</button>
+  </div>
+  <div id="current-node-display">Node <span id="node-num">1</span> of 26 &mdash; <span id="node-id-display">START</span></div>
+</div>
+
+<div id="layout">
+
+<!-- LEFT NAV -->
+<div id="nav">
+  <div class="nav-section">First Call</div>
+  <div class="nav-item active" data-node="1" onclick="goNode(1)"><span class="nav-num">01</span><span class="nav-id">START</span></div>
+  <div class="nav-item" data-node="2" onclick="goNode(2)"><span class="nav-num">02</span><span class="nav-id">CALLBACK_SCHEDULE</span></div>
+  <div class="nav-item" data-node="3" onclick="goNode(3)"><span class="nav-num">03</span><span class="nav-id">ENGAGEMENT</span></div>
+  <div class="nav-item" data-node="4" onclick="goNode(4)"><span class="nav-num">04</span><span class="nav-id">NOT_AWARE_PATH</span></div>
+  <div class="nav-item" data-node="5" onclick="goNode(5)"><span class="nav-num">05</span><span class="nav-id">AWARE_PATH</span></div>
+  <div class="nav-item" data-node="6" onclick="goNode(6)"><span class="nav-num">06</span><span class="nav-id">AWARE_ATTEMPTED</span></div>
+  <div class="nav-item" data-node="7" onclick="goNode(7)"><span class="nav-num">07</span><span class="nav-id">CONSEQUENCE</span></div>
+  <div class="nav-item" data-node="8" onclick="goNode(8)"><span class="nav-num">08</span><span class="nav-id">SOLUTION</span></div>
+  <div class="nav-item" data-node="9" onclick="goNode(9)"><span class="nav-num">09</span><span class="nav-id">TRANSITION</span></div>
+
+  <div class="nav-section">Second Call</div>
+  <div class="nav-item" data-node="10" onclick="goNode(10)"><span class="nav-num">10</span><span class="nav-id">RECONNECT</span></div>
+  <div class="nav-item" data-node="11" onclick="goNode(11)"><span class="nav-num">11</span><span class="nav-id">EDUCATE</span></div>
+  <div class="nav-item" data-node="12" onclick="goNode(12)"><span class="nav-num">12</span><span class="nav-id">QUALIFY</span></div>
+  <div class="nav-item" data-node="13" onclick="goNode(13)"><span class="nav-num">13</span><span class="nav-id">COMMITMENT</span></div>
+
+  <div class="nav-section">Objections</div>
+  <div class="nav-item" data-node="14" onclick="goNode(14)"><span class="nav-num">14</span><span class="nav-id">OBJECTION_HANDLING</span></div>
+  <div class="nav-item" data-node="15" onclick="goNode(15)"><span class="nav-num">15</span><span class="nav-id">INTERESTED_NOT_SURE</span></div>
+  <div class="nav-item" data-node="16" onclick="goNode(16)"><span class="nav-num">16</span><span class="nav-id">CREDIBILITY_OBJECTION</span></div>
+  <div class="nav-item" data-node="17" onclick="goNode(17)"><span class="nav-num">17</span><span class="nav-id">FEE_OBJECTION</span></div>
+  <div class="nav-item" data-node="18" onclick="goNode(18)"><span class="nav-num">18</span><span class="nav-id">DIY_OBJECTION</span></div>
+  <div class="nav-item" data-node="19" onclick="goNode(19)"><span class="nav-num">19</span><span class="nav-id">UNKNOWN_OBJECTION</span></div>
+  <div class="nav-item" data-node="20" onclick="goNode(20)"><span class="nav-num">20</span><span class="nav-id">SOFT_CLOSE</span></div>
+
+  <div class="nav-section">Inbound</div>
+  <div class="nav-item" data-node="21" onclick="goNode(21)"><span class="nav-num">21</span><span class="nav-id">INBOUND_START</span></div>
+
+  <div class="nav-section">Follow-Up</div>
+  <div class="nav-item" data-node="22" onclick="goNode(22)"><span class="nav-num">22</span><span class="nav-id">RE_PRESENT_VALUE</span></div>
+  <div class="nav-item" data-node="23" onclick="goNode(23)"><span class="nav-num">23</span><span class="nav-id">VOICEMAIL</span></div>
+  <div class="nav-item" data-node="24" onclick="goNode(24)"><span class="nav-num">24</span><span class="nav-id">FOLLOWUP_60DAY</span></div>
+  <div class="nav-item" data-node="25" onclick="goNode(25)"><span class="nav-num">25</span><span class="nav-id">SUPERVISOR_CALLBACK</span></div>
+  <div class="nav-item" data-node="26" onclick="goNode(26)"><span class="nav-num">26</span><span class="nav-id">WRONG_NUMBER</span></div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+
+<!-- ═══ NODE 1: START ═══ -->
+<div class="node visible" id="node-1">
+  <div class="node-header">
+    <div class="node-id-line">
+      <span>NODE 01</span><span class="node-tag tag-first">FIRST CALL</span>
+    </div>
+    <div class="node-title">START &mdash; Connection Stage</div>
+    <div class="node-meta">NEPQ: Connection | Voss: Barrel-Through Hook + Soft Check-In | Tone: COLLABORATIVE</div>
+  </div>
+  <div class="node-intro">Three-beat structure: (1) Identity + Hook — deliver the value proposition before asking for anything. (2) Context Frame — position as notification, not solicitation. (3) Soft Check-In — first diagnostic window for personality detection. Their response to the check-in is the first data point.</div>
+
+  <div class="variant" data-v="U" id="1-U">
+    <div class="variant-block" data-v="U">
+      <div class="variant-header">[UNDETERMINED] — Default Barrel-Through Opening</div>
+      <div class="variant-body">
+        <div class="cue-note">DETECTION WINDOW: Their response to the check-in is diagnostic data. Listen for pace, length, tone, and what they say first.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Hi [CLIENT NAME], this is [AGENT NAME] with Stealth Investigations — I'm reaching out because our research team flagged a payment in your name from [REPORTING COMPANY] that never made it to you.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>I wanted to make sure you were aware of it.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Does that ring a bell at all?</div>
+        <div class="cue-note">WAIT. Do not fill the silence. Their natural response reveals type:
+          <div class="detection-table">
+            <div class="det-row"><span class="det-signal">Short, clipped, asks about money or next steps</span><span class="det-type det-D">= likely DIRECTOR</span></div>
+            <div class="det-row"><span class="det-signal">Warm, animated, launches into a story</span><span class="det-type det-S">= likely SOCIALIZER</span></div>
+            <div class="det-row"><span class="det-signal">Soft, uncertain, mentions family member</span><span class="det-type det-R">= likely RELATER</span></div>
+            <div class="det-row"><span class="det-signal">Asks a clarifying question before answering</span><span class="det-type det-T">= likely THINKER</span></div>
+          </div>
+        </div>
+        <div class="cue-note">Confident read? Select the type now. Not sure? Stay UNDETERMINED — ENGAGEMENT has a built-in diagnostic question.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="D" id="1-D">
+    <div class="variant-block" data-v="D">
+      <div class="variant-header">[DIRECTOR] — Fast, Fact-Dense, Zero Filler</div>
+      <div class="variant-body">
+        <div class="cue-note">Tone: AUTHORITATIVE + SERIOUS/HONEST | Pace: Match theirs — fast. Include the dollar amount upfront. No filler.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Hi [NAME], [AGENT] with Stealth Investigations. Our research team found a payment of [AMOUNT] in your name from [COMPANY] that never reached you. I wanted to make sure you knew about it — does that ring a bell?</div>
+        <div class="cue-note">One breath. Straight to the check-in. No "uh," no casualness.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="S" id="1-S">
+    <div class="variant-block" data-v="S">
+      <div class="variant-header">[SOCIALIZER] — Warm, Energetic, Hook as Story Teaser</div>
+      <div class="variant-body">
+        <div class="cue-note">Tone: COLLABORATIVE + PLAYFUL | Pace: Upbeat, match their energy.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Hey [NAME]! It's [AGENT] over at Stealth Investigations — listen, I've got something interesting for you. Our research team found a payment in your name from [COMPANY] that never made it to you. I wanted to make sure you knew about it — does that ring a bell at all?</div>
+        <div class="cue-note">"Something interesting for you" is a teaser that plays to their curiosity. If they go on a tangent, allow 15-20 seconds before redirecting to ENGAGEMENT.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="R" id="1-R">
+    <div class="variant-block" data-v="R">
+      <div class="variant-header">[RELATER] — Softer Delivery, Unhurried, Reassuring Frame</div>
+      <div class="variant-body">
+        <div class="cue-note">Tone: COLLABORATIVE + CONCERNED | Pace: Slow, warm, gentle.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Hi [NAME], this is [AGENT] with Stealth Investigations. I'm calling because our research team came across some information I think would be important for you to know about — it looks like there's a payment in your name from [COMPANY] that never reached you. Does that ring a bell at all?</div>
+        <div class="cue-note">"Important for you to know about" frames the call as looking out for them. Slower pace prevents the barrel-through from feeling aggressive.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="T" id="1-T">
+    <div class="variant-block" data-v="T">
+      <div class="variant-header">[THINKER] — Structured, Credentialed, Specific</div>
+      <div class="variant-body">
+        <div class="cue-note">Tone: AUTHORITATIVE + SERIOUS/HONEST | Pace: Measured, deliberate.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Hi [NAME], this is [AGENT] with Stealth Investigations. I'm calling because our research department identified a payment in your name — it was reported by [COMPANY] and is currently being held by the State of Texas. I wanted to make sure you were aware of it. Does that ring a bell?</div>
+        <div class="cue-note">"Research department identified" and "currently being held by the State of Texas" add specificity. The extra detail signals credibility before they have to ask for it.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="branch-block">
+    <div class="branch-label">Branch Logic</div>
+    <div class="branch-item">IF Prospect engages → <span class="branch-node" onclick="goNode(3)">ENGAGEMENT</span></div>
+    <div class="branch-item">IF Prospect says busy / not now → <span class="branch-node" onclick="goNode(2)">CALLBACK_SCHEDULE</span></div>
+    <div class="branch-item">IF No answer → <span class="branch-node" onclick="goNode(23)">VOICEMAIL</span></div>
+    <div class="branch-item">IF Not interested / hangs up → <span class="branch-dispo">DISPOSITION: NO_INTEREST</span></div>
+  </div>
+</div>
+
+<!-- ═══ NODE 2: CALLBACK_SCHEDULE ═══ -->
+<div class="node" id="node-2">
+  <div class="node-header">
+    <div class="node-id-line"><span>NODE 02</span><span class="node-tag tag-neutral">NEUTRAL</span></div>
+    <div class="node-title">CALLBACK_SCHEDULE &mdash; Busy / Not Now</div>
+    <div class="node-meta">NEPQ: Connection | Voss: No-Oriented Question | Tone: COLLABORATIVE</div>
+  </div>
+  <div class="node-intro">Personality-neutral. Personality type has not been determined yet. The goal is to secure a specific date and time, not to diagnose or advance the sale.</div>
+
+  <div class="variant visible" id="2-ALL">
+    <div class="variant-block" data-v="ALL">
+      <div class="variant-header">[ALL TYPES] — Universal Script</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>No problem at all. Would it be a bad time if I called you back [tomorrow / day after]? I just want to make sure you're aware of this. It will only take a couple of minutes.</div>
+        <div class="cue-note">Voss: No-Oriented. "Would it be a bad time" means saying "No" = they agree to the callback.</div>
+        <div class="cue-note">Log callback date/time and any tone notes. If they were warm or engaged before saying they were busy, that is diagnostic data — note it.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="branch-block">
+    <div class="branch-label">Branch Logic</div>
+    <div class="branch-item">IF Callback scheduled → <span class="branch-dispo">DISPOSITION: CALLBACK</span></div>
+    <div class="branch-item">IF Prospect declines entirely → <span class="branch-dispo">DISPOSITION: NO_INTEREST</span></div>
+  </div>
+</div>
+
+<!-- ═══ NODE 3: ENGAGEMENT ═══ -->
+<div class="node" id="node-3">
+  <div class="node-header">
+    <div class="node-id-line"><span>NODE 03</span><span class="node-tag tag-first">FIRST CALL</span></div>
+    <div class="node-title">ENGAGEMENT &mdash; Problem Awareness</div>
+    <div class="node-meta">NEPQ: Situation + Problem Awareness | Voss: Labeling + Accusation Audit | Tone: CONCERNED → COLLABORATIVE</div>
+  </div>
+  <div class="node-intro">Structure: Deliver the news, pause for natural reaction (Detection Moment 1), brief acknowledgment, then meta-preference question (Detection Moment 2). By the end of this node the agent should have enough data to select a personality type.<br><br>Meta-preference question: "Just so I can make sure I cover everything the right way for you — when something like this comes up, do you usually like to get all the details upfront, or do you prefer just the highlights and you'll ask if you need more?" This serves as both the personality diagnostic AND the delivery instruction for CONSEQUENCE.</div>
+
+  <div class="variant" data-v="U" id="3-U">
+    <div class="variant-block" data-v="U">
+      <div class="variant-header">[UNDETERMINED] — Pause-React-Transition + Meta-Preference</div>
+      <div class="variant-body">
+        <div class="cue-note">Deliver at moderate pace. Not rushed. Not slow. Watch for reactions throughout.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>We've been researching a case involving [REPORTING COMPANY], and according to the notes on our file, it looks like they tried to issue you a payment in the amount of [AMOUNT] back in [YEAR — always subtract 2 years from reporting year].</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>I believe we sent you a notification about this a couple of weeks ago — it was sent to your address on [STREET NAME]...</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Were you aware that [REPORTING COMPANY] failed to deliver your payment [X] years ago?</div>
+        <div class="cue-note">PAUSE. Do not fill the silence. Their natural reaction is Detection Moment 1:
+          <div class="detection-table">
+            <div class="det-row"><span class="det-signal">Brief, action-oriented ("So what do we do about it?")</span><span class="det-type det-D">= DIRECTOR</span></div>
+            <div class="det-row"><span class="det-signal">Emotional, expressive ("Oh my God, are you kidding me?!")</span><span class="det-type det-S">= SOCIALIZER</span></div>
+            <div class="det-row"><span class="det-signal">Worried, deferent ("Oh no... I should probably tell my husband")</span><span class="det-type det-R">= RELATER</span></div>
+            <div class="det-row"><span class="det-signal">Asks follow-up questions ("What was the exact date? What type of payment?")</span><span class="det-type det-T">= THINKER</span></div>
+          </div>
+        </div>
+        <div class="script-line"><div class="agent-label">AGENT</div>I completely understand.</div>
+        <div class="cue-note">OR: "I'm glad I was able to reach you about this." Match your acknowledgment to their emotional register.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Just so I can make sure I cover everything the right way for you — when something like this comes up, do you usually like to get all the details upfront, or do you prefer just the highlights and you'll ask if you need more?</div>
+        <div class="cue-note">Detection Moment 2 — their answer tells you both personality AND how to deliver CONSEQUENCE:
+          <div class="detection-table">
+            <div class="det-row"><span class="det-signal">"Highlights" / "Just the short version"</span><span class="det-type det-D">= DIRECTOR — run condensed CONSEQUENCE</span></div>
+            <div class="det-row"><span class="det-signal">"Oh, tell me everything!" / enthusiastic</span><span class="det-type det-S">= SOCIALIZER — run full narrative CONSEQUENCE</span></div>
+            <div class="det-row"><span class="det-signal">"Whatever you think is best" / defers to you</span><span class="det-type det-R">= RELATER — run empathy-weighted CONSEQUENCE</span></div>
+            <div class="det-row"><span class="det-signal">"All the details, please" / requests specifics</span><span class="det-type det-T">= THINKER — run data-rich CONSEQUENCE</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="D" id="3-D">
+    <div class="variant-block" data-v="D">
+      <div class="variant-header">[DIRECTOR] — Facts First, No Emotional Setup</div>
+      <div class="variant-body">
+        <div class="cue-note">Tone: CONCERNED, brisk. Deliver facts. Skip the emotional framing. Get to the awareness question fast.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>We've been researching a case involving [REPORTING COMPANY]. According to our file, they tried to issue you [AMOUNT] back in [YEAR] — it was sent to your address on [STREET NAME]. Were you aware they failed to deliver that payment?</div>
+        <div class="cue-note">Compress the setup into one or two sentences. The Director wants the fact, not the story.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>When something like this comes up, do you usually like to get all the details or just the highlights?</div>
+        <div class="cue-note">They will almost certainly say highlights. Confirm. Move to condensed CONSEQUENCE.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="S" id="3-S">
+    <div class="variant-block" data-v="S">
+      <div class="variant-header">[SOCIALIZER] — Build Curiosity, "Wait Until You Hear This"</div>
+      <div class="variant-body">
+        <div class="cue-note">Tone: COLLABORATIVE + CONCERNED. Build anticipation before the reveal. Let them react and vent after.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>So I've been looking into a case involving [REPORTING COMPANY], and wait until you hear this — according to our file, it looks like they tried to issue you [AMOUNT] back in [YEAR], sent to your address on [STREET NAME].</div>
+        <div class="cue-note">PAUSE after the amount. Let them react. This is a natural story beat.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Were you aware that [REPORTING COMPANY] never got that payment to you?</div>
+        <div class="cue-note">Let them vent if they want. Give them 15-20 seconds before the acknowledgment.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>I hear you. Listen — just so I can walk you through this in a way that's useful to you, do you usually like all the details upfront or just the highlights and you'll ask questions as we go?</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="R" id="3-R">
+    <div class="variant-block" data-v="R">
+      <div class="variant-header">[RELATER] — Gentle, Empathetic, Unhurried</div>
+      <div class="variant-body">
+        <div class="cue-note">Tone: CONCERNED, warm, slow. The news may upset them. Be the steady, caring voice.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>So we've been researching a case involving [REPORTING COMPANY], and I want to make sure I handle this carefully because it's a bit of an unexpected situation. According to our notes, it looks like they tried to issue you a payment of [AMOUNT] back in [YEAR] — it was sent to your address on [STREET NAME].</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Were you aware that [REPORTING COMPANY] failed to deliver that to you?</div>
+        <div class="cue-note">PAUSE. If they sound worried or uncertain, the acknowledgment is critical:</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>I completely understand. Please don't worry — we're going to go through everything step by step.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Just so I can make sure I cover this the right way for you — do you usually prefer to get all the details upfront, or would you rather I give you the main points and you can ask questions as we go?</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="T" id="3-T">
+    <div class="variant-block" data-v="T">
+      <div class="variant-header">[THINKER] — Structured, Specific, Sequenced</div>
+      <div class="variant-body">
+        <div class="cue-note">Tone: AUTHORITATIVE + CONCERNED. Provide dates, amounts, and specifics upfront. They want data, not narrative.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>I'm calling in reference to a case we've been researching involving [REPORTING COMPANY]. According to our records, they tried to issue a payment of [EXACT AMOUNT] back in approximately [YEAR], originally sent to [REPORTED ADDRESS]. It was never delivered, and the funds were subsequently turned over to the State of Texas.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Were you aware that [REPORTING COMPANY] failed to deliver that payment?</div>
+        <div class="cue-note">PAUSE. They will likely ask a follow-up question before answering — that is normal. Answer it directly.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Just so I can structure this conversation efficiently for you — do you prefer to get all the relevant details upfront, or would you like me to give you the highlights and you can drill down where you have questions?</div>
+        <div class="cue-note">They will almost certainly say all the details. Confirm. Move to data-rich CONSEQUENCE.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="branch-block">
+    <div class="branch-label">Branch Logic</div>
+    <div class="branch-item">IF Prospect was NOT aware → <span class="branch-node" onclick="goNode(4)">NOT_AWARE_PATH</span></div>
+    <div class="branch-item">IF Prospect WAS aware → <span class="branch-node" onclick="goNode(5)">AWARE_PATH</span></div>
+    <div class="branch-item">IF Prospect says bad time → <span class="branch-node" onclick="goNode(2)">CALLBACK_SCHEDULE</span></div>
+    <div class="branch-item">IF Not interested → <span class="branch-node" onclick="goNode(14)">OBJECTION_HANDLING</span></div>
+  </div>
+</div>
+
+<!-- ═══ NODE 4: NOT_AWARE_PATH ═══ -->
+<div class="node" id="node-4">
+  <div class="node-header">
+    <div class="node-id-line"><span>NODE 04</span><span class="node-tag tag-first">FIRST CALL</span></div>
+    <div class="node-title">NOT_AWARE_PATH &mdash; Deliver the News</div>
+    <div class="node-meta">NEPQ: Problem Awareness (deepening) | Voss: Labeling + Tactical Empathy + "That's Right" Trigger | Tone: CONCERNED</div>
+  </div>
+  <div class="node-intro">Core sequence: deliver the news with appropriate emotional weight, pause for reaction, validate, attempt the "That's Right" trigger, then transition to CONSEQUENCE using the meta-preference answer already given in ENGAGEMENT.</div>
+
+  <div class="variant" data-v="U" id="4-U">
+    <div class="variant-block" data-v="U">
+      <div class="variant-header">[UNDETERMINED] — Core Delivery at Neutral Pace</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>WOW — well, according to our research, [REPORTING COMPANY] reported that they sent the payment in [2 YEARS PRIOR] to [REPORTED ADDRESS].</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Then it looks like somebody at [REPORTING COMPANY] took the easy way out and instead of reaching out to you, they claimed the account was abandoned and turned your money over to the State of Texas.</div>
+        <div class="cue-note">PAUSE. Let them react. Do not rush to the next line.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>I'm sorry to be the one to tell you that [REPORTING COMPANY] failed to do their job — but I'm also glad that I was able to connect with you and, at the very least, make you aware of the problem.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>So if I'm understanding this correctly — [REPORTING COMPANY] owed you [AMOUNT], they never got it to you, and then they turned it over to the State without ever contacting you. Is that a fair summary?</div>
+        <div class="cue-note">Target: "That's right." If you get it, strong rapport. Proceed with confidence. Now use their meta-preference answer from ENGAGEMENT to determine how to deliver CONSEQUENCE.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="D" id="4-D">
+    <div class="variant-block" data-v="D">
+      <div class="variant-header">[DIRECTOR] — Efficient, Factual, No Emotional Buildup</div>
+      <div class="variant-body">
+        <div class="cue-note">Skip "WOW." Deliver the facts. The Director does not need emotional framing — they need to understand what happened and what happens next.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>According to our records, [COMPANY] sent your payment to the State rather than reaching out to you. Here's the situation: they reported it as abandoned in [YEAR] and turned it over to the State of Texas.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>So [COMPANY] owed you [AMOUNT], they dropped the ball, and now the State has it. Is that your understanding as well?</div>
+        <div class="cue-note">No lengthy empathy. Get confirmation. Move.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="S" id="4-S">
+    <div class="variant-block" data-v="S">
+      <div class="variant-header">[SOCIALIZER] — Amplified Emotional Delivery, Let Them React</div>
+      <div class="variant-body">
+        <div class="cue-note">Amp up the delivery. Use the "WOW." Let them react and vent — their reaction is the energy that builds the relationship.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Oh WOW — so according to our research, [REPORTING COMPANY] said they sent the payment back in [YEAR] to [ADDRESS]. And then — and I honestly still can't believe companies do this — instead of picking up the phone and calling you, they just... claimed the account was abandoned and handed your money to the State.</div>
+        <div class="cue-note">PAUSE here. Let them react. Mirror whatever they say. If they say "That's crazy!" — agree with energy.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>I know, right? I'm really sorry you're finding out this way — but I'm glad we were able to track you down. So [COMPANY] owed you [AMOUNT], never got it to you, and handed it to the State without a word. Is that a fair summary?</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="R" id="4-R">
+    <div class="variant-block" data-v="R">
+      <div class="variant-header">[RELATER] — Gentle, Empathetic, Steady Pace</div>
+      <div class="variant-body">
+        <div class="cue-note">Slow down. This prospect may be emotionally affected by the news. Your job is to be the steady, reassuring voice throughout.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>So according to our research, [REPORTING COMPANY] reported that they sent the payment back in [YEAR] to [ADDRESS]. Unfortunately, instead of following up with you directly, they claimed the account was abandoned and turned the funds over to the State of Texas.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>I'm really sorry to be sharing this with you. I know this kind of thing is frustrating to hear. But I'm genuinely glad that we were able to reach you so at least you know what's going on.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>So if I'm understanding this right — [COMPANY] owed you [AMOUNT], they never reached out to you, and now the State has the money. Does that sound right to you?</div>
+        <div class="cue-note">Soft pause after the summary. Let them confirm at their own pace.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="T" id="4-T">
+    <div class="variant-block" data-v="T">
+      <div class="variant-header">[THINKER] — Factual, Detailed, Structured</div>
+      <div class="variant-body">
+        <div class="cue-note">Precision matters to this prospect. Provide dates, amounts, and entity names with specificity. No emotional amplification.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Our research indicates [COMPANY] reported this payment as abandoned property in [YEAR]. The amount recorded was [EXACT AMOUNT] for [TYPE OF PROPERTY]. Under Texas Property Code Chapter 74, the funds were then turned over to the State of Texas, which is the standard process after the statutory dormancy period.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>The reporting company did not make additional contact attempts before reporting it, which is where the breakdown occurred on their end.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>So to confirm my understanding — [COMPANY] issued [AMOUNT] in [YEAR], did not contact you prior to reporting it, and the funds are now held by the State. Is that accurate?</div>
+        <div class="cue-note">If they correct anything, note it and adjust. Thinkers respect accuracy and will respect you for welcoming their correction.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="branch-block">
+    <div class="branch-label">Branch Logic</div>
+    <div class="branch-item">IF Prospect agrees to hear more → <span class="branch-node" onclick="goNode(7)">CONSEQUENCE</span></div>
+    <div class="branch-item">IF Prospect says bad time → <span class="branch-node" onclick="goNode(2)">CALLBACK_SCHEDULE</span></div>
+    <div class="branch-item">IF Not interested → <span class="branch-node" onclick="goNode(14)">OBJECTION_HANDLING</span></div>
+  </div>
+</div>
+
+<!-- ═══ NODE 5: AWARE_PATH ═══ -->
+<div class="node" id="node-5">
+  <div class="node-header">
+    <div class="node-id-line"><span>NODE 05</span><span class="node-tag tag-first">FIRST CALL</span></div>
+    <div class="node-title">AWARE_PATH &mdash; Already Aware</div>
+    <div class="node-meta">NEPQ: Situation (refine) | Voss: Labeling + Calibrated Question | Tone: COLLABORATIVE</div>
+  </div>
+  <div class="node-intro">Prospect already knew about the money. The goal here is to understand where they are in the process without making them feel interrogated.</div>
+
+  <div class="variant" data-v="U" id="5-U">
+    <div class="variant-block" data-v="U">
+      <div class="variant-header">[UNDETERMINED] — Label and Probe</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Oh, okay — so you were already aware of this. It sounds like this has probably been on your mind for a while.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Have you had a chance to look into what the State requires to get those funds released to you?</div>
+        <div class="cue-note">Voss: Label ("sounds like this has been on your mind") + Calibrated Question. Wait for the answer — it determines the next branch AND reveals personality type if you do not have a read yet.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="D" id="5-D">
+    <div class="variant-block" data-v="D">
+      <div class="variant-header">[DIRECTOR] — Skip Warmth, Get to Status Fast</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Good — so you already know about it. Have you started the process?</div>
+        <div class="cue-note">One question. Short. Wait. They will tell you exactly where they are.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="S" id="5-S">
+    <div class="variant-block" data-v="S">
+      <div class="variant-header">[SOCIALIZER] — Engage Their Story</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Oh interesting — so you've already heard about this! Tell me, how long have you known? Have you done anything with it yet?</div>
+        <div class="cue-note">Let them talk. Their story will reveal whether they attempted anything and how they feel about it. The more they share, the better your positioning for CONSEQUENCE or AWARE_ATTEMPTED.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="R" id="5-R">
+    <div class="variant-block" data-v="R">
+      <div class="variant-header">[RELATER] — Affirm and Ask Gently</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Oh, okay — I'm glad you knew about it. Did someone in your family mention it to you, or did you come across it on your own?</div>
+        <div class="cue-note">This gives you information about who else is in the decision loop — which matters enormously for closing with a Relater. Also reveals whether they have already been influenced by someone else's opinion of the process.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="T" id="5-T">
+    <div class="variant-block" data-v="T">
+      <div class="variant-header">[THINKER] — Direct, Process-Oriented</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Understood. Have you looked into the claim process at all, or done any research on what's required?</div>
+        <div class="cue-note">The Thinker may have already done significant research. Let them tell you what they know. Do not talk over their knowledge — it will cost you credibility. If they know the process well, acknowledge it and position your value around execution speed, not information.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="branch-block">
+    <div class="branch-label">Branch Logic</div>
+    <div class="branch-item">IF Prospect has NOT attempted recovery → <span class="branch-node" onclick="goNode(7)">CONSEQUENCE</span></div>
+    <div class="branch-item">IF Prospect HAS attempted / is in process → <span class="branch-node" onclick="goNode(6)">AWARE_ATTEMPTED</span></div>
+    <div class="branch-item">IF Prospect already filed on their own → <span class="branch-node" onclick="goNode(18)">DIY_OBJECTION</span></div>
+  </div>
+</div>
+
+<!-- ═══ NODE 6: AWARE_ATTEMPTED ═══ -->
+<div class="node" id="node-6">
+  <div class="node-header">
+    <div class="node-id-line"><span>NODE 06</span><span class="node-tag tag-first">FIRST CALL</span></div>
+    <div class="node-title">AWARE_ATTEMPTED &mdash; Tried and Struggling</div>
+    <div class="node-meta">NEPQ: Problem Awareness (amplify) | Voss: Labeling + Calibrated Question | Tone: COLLABORATIVE + CONCERNED</div>
+  </div>
+  <div class="node-intro">The prospect has already engaged with the State process. Their frustration is your most powerful selling tool. Do not minimize it. Let them describe exactly what they have been through. The system's design — wearing people down — becomes self-evident in their own words.</div>
+
+  <div class="variant" data-v="U" id="6-U">
+    <div class="variant-block" data-v="U">
+      <div class="variant-header">[UNDETERMINED] — Label and Let Them Vent</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>It sounds like you've already been through some of this process. How has that been going for you?</div>
+        <div class="cue-note">Voss: Label + Calibrated Question. WAIT. Let them vent. The longer they talk, the better. Their specific frustrations are exactly what you will echo back in CONSEQUENCE.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>That doesn't surprise me at all. What you're describing is exactly what the State's process is designed to do — wear people down until they give up.</div>
+        <div class="cue-note">Deliver this last line with calm certainty. It is an insider observation, not a complaint. Then proceed to CONSEQUENCE.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="D" id="6-D">
+    <div class="variant-block" data-v="D">
+      <div class="variant-header">[DIRECTOR] — Acknowledge Fast, Validate, Move</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>So you've already dealt with some of this. How far did you get before it stalled?</div>
+        <div class="cue-note">Short question. Get the status. Do not encourage a long story — a Director wants to know you understand the situation, not that you are sympathetic about it.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Right. That's exactly where most people get stuck. Here's why that happens.</div>
+        <div class="cue-note">Transition to CONSEQUENCE immediately.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="S" id="6-S">
+    <div class="variant-block" data-v="S">
+      <div class="variant-header">[SOCIALIZER] — Match Their Energy, Mirror the Frustration</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Oh no — you've already been dealing with this? Tell me what happened. What have they put you through so far?</div>
+        <div class="cue-note">Let them tell the whole story. Add empathy reactions ("You're kidding," "I can't believe that"). The more animated and validated they feel, the stronger your contrast will be when you present the solution.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>You know what — none of that surprises me. What you're describing is EXACTLY how they operate. It's not random — it's the system. Let me tell you something most people never figure out.</div>
+        <div class="cue-note">Transition to CONSEQUENCE with energy.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="R" id="6-R">
+    <div class="variant-block" data-v="R">
+      <div class="variant-header">[RELATER] — Empathy First, Steady Reassurance</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>It sounds like this has been stressful to deal with. I'm sorry you've had to go through that. Can you tell me a little about what you've run into so far?</div>
+        <div class="cue-note">WAIT. Let them describe the experience in full. Acknowledge the emotional weight of it. This prospect has likely felt dismissed or confused by the process — your empathy and patience distinguish you immediately.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>I hear you. What you're going through is not an accident — the process is genuinely designed to discourage people. The good news is that there's a way around most of it.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="T" id="6-T">
+    <div class="variant-block" data-v="T">
+      <div class="variant-header">[THINKER] — Factual Acknowledgment, Invite Their Analysis</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>It sounds like you've already been working with the State directly. What stage did you reach, and where did things break down?</div>
+        <div class="cue-note">The Thinker will give you a detailed, chronological account. Listen carefully — they may have specific knowledge you can use. If they mention specific forms or requirements, acknowledge them by name.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Based on what you're describing, you ran into what most people hit at that stage — and there's a legal reason the State can get away with it that most people don't know about.</div>
+        <div class="cue-note">Transition to CONSEQUENCE with a promise of specifics.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="branch-block">
+    <div class="branch-label">Branch Logic</div>
+    <div class="branch-item">Continue to → <span class="branch-node" onclick="goNode(7)">CONSEQUENCE</span></div>
+  </div>
+</div>
+
+<!-- ═══ NODE 7: CONSEQUENCE ═══ -->
+<div class="node" id="node-7">
+  <div class="node-header">
+    <div class="node-id-line"><span>NODE 07</span><span class="node-tag tag-first">FIRST CALL</span></div>
+    <div class="node-title">CONSEQUENCE &mdash; The State Process</div>
+    <div class="node-meta">NEPQ: Consequence | Voss: Labeling + Tactical Silence | Tone: AUTHORITATIVE + PLAYFUL/SARCASTIC (brief moments)</div>
+  </div>
+  <div class="node-intro">Delivery calibration comes from the meta-preference answer given in ENGAGEMENT. If you do not have a confirmed type by now, use UNDETERMINED. The sarcastic document requirements line is a diagnostic tool — how they react to it will almost always reveal their type if you still do not have a read.</div>
+
+  <div class="variant" data-v="U" id="7-U">
+    <div class="variant-block" data-v="U">
+      <div class="variant-header">[UNDETERMINED] — Medium-Length Delivery, Watch for Reactions</div>
+      <div class="variant-body">
+        <div class="cue-note">Deliver the core script at medium length. Not the full Socializer narrative. Not the condensed Director version. Include the sarcastic document requirements line — it draws reactions that reveal type.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>So it seems like anytime you're dealing with any governmental agency, they always make their process much more difficult than it actually should be...</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>First there's the initial forms... a couple of signatures required... no big deal there...</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Once they're submitted, the State auto-generates what's usually a generic list of documents for you to secure — items like birth certificates, death certificates, marriage licenses, divorce decrees, copies of court orders...</div>
+        <div class="cue-note">TONE SHIFT: Sarcastic for the next line.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>...proof of your address from 1984 and a copy of a bank statement from 2003... I mean, some of their so-called requirements are just insane.</div>
+        <div class="cue-note">DETECTION WINDOW — Their reaction to the absurd requirements line:
+          <div class="detection-table">
+            <div class="det-row"><span class="det-signal">Cuts in with "So how long does YOUR process take?"</span><span class="det-type det-D">= DIRECTOR — select and condense</span></div>
+            <div class="det-row"><span class="det-signal">Laughs or reacts dramatically ("You're KIDDING!")</span><span class="det-type det-S">= SOCIALIZER — lean in and continue with narrative</span></div>
+            <div class="det-row"><span class="det-signal">Sounds stressed or overwhelmed ("Oh my... that's a lot")</span><span class="det-type det-R">= RELATER — soften and emphasize empathy</span></div>
+            <div class="det-row"><span class="det-signal">Asks which documents are legally required vs. policy</span><span class="det-type det-T">= THINKER — shift to data-rich delivery</span></div>
+          </div>
+        </div>
+        <div class="script-line"><div class="agent-label">AGENT</div>If you do not provide the documents, they either deny or suspend your case. This is where most people give up... which, I guess, is what their process is designed to do...</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>If you DO provide the documents, on time, THEN your case will finally be assigned to a State Examiner. That part won't take place for a minimum of 60 to 90 days. So now you're three months in, and THEN they provide you with the real list of documents...</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>This is where the second wave of people usually give up. After all, they just jumped through three months of hoops and chasing people on the phone, just to find out they're going to have to go through another three months of nonsense.</div>
+        <div class="cue-note">PAUSE. Let the weight of this sink in. Silence here is powerful.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="D" id="7-D">
+    <div class="variant-block" data-v="D">
+      <div class="variant-header">[DIRECTOR] — Condensed, Bullet-Point Delivery</div>
+      <div class="variant-body">
+        <div class="cue-note">Do not tell the story. Give them the map. They will fill in the emotional reaction themselves.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Here's what the State process looks like: first document request, then a 60-to-90-day wait for an examiner to be assigned, then a second document request with the real list of requirements. Minimum six months start to finish, and most people give up somewhere in the middle — which is exactly what the State is counting on.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Our clients are done in 45 to 60 days. That's the contrast.</div>
+        <div class="cue-note">Go straight to SOLUTION.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="S" id="7-S">
+    <div class="variant-block" data-v="S">
+      <div class="variant-header">[SOCIALIZER] — Full Narrative, Animated, Use the Sarcastic Moments</div>
+      <div class="variant-body">
+        <div class="cue-note">Tell the whole story. Be a little theatrical. The sarcastic moments should have energy. Let them laugh or react — it builds the relationship and makes the contrast landing harder.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>So here's how this works, and I want you to really picture this because it's kind of unbelievable...</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>They start with the initial forms — fine, no big deal, a couple of signatures. But THEN... they auto-generate what they call a "generic list" of documents...</div>
+        <div class="cue-note">Pause for effect before listing the absurd examples.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>...birth certificates, death certificates, marriage licenses, divorce decrees... and my personal favorite — proof of your address from 1984 and a copy of a bank statement from 2003. I mean...</div>
+        <div class="cue-note">Let them react. If they laugh, laugh with them briefly, then shift back to serious.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>And here's the crazy part — if you don't give them every single thing on their list, on time? Denied. Or suspended. That's it. And THAT is where most people just... give up. Which is apparently the whole point.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Because if by some miracle you DO get through all of that — now you wait ANOTHER 60 to 90 days just to get your case assigned to an actual human being. And THEN you get the REAL document list.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Three months of work. Just to find out you're starting over. Most people are gone by that point.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="R" id="7-R">
+    <div class="variant-block" data-v="R">
+      <div class="variant-header">[RELATER] — Emotional Toll, Family Impact, Empathy-Weighted</div>
+      <div class="variant-body">
+        <div class="cue-note">Emphasize the personal burden. Imagine going through this alone, taking time from family, dealing with bureaucracy that does not care about you.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>So let me walk you through what the State requires, because I want you to understand what you're dealing with before you decide anything...</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>They send you a generic list of documents — things like birth certificates, death certificates, marriage licenses. And I know that sounds manageable, but here's the reality: gathering all of these takes time. It means phone calls, waiting on records offices, tracking down documents you might not even have anymore...</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Imagine having to do all of that while also just trying to live your life — taking time away from your family, making call after call to government offices where nobody really seems to care about your specific situation...</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>And if you miss a deadline, or forget one document? They deny or suspend your case. Most people at that point just... walk away. After everything they put in.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>And the ones who do push through? They wait another 60 to 90 days. Then they get the real requirements. It's a second wave of the same thing.</div>
+        <div class="cue-note">PAUSE. Gentle pause — not dramatic. Just let the reality land before moving to SOLUTION.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="T" id="7-T">
+    <div class="variant-block" data-v="T">
+      <div class="variant-header">[THINKER] — Specific, Structured, Data-Rich</div>
+      <div class="variant-body">
+        <div class="cue-note">Name the forms. Give the timelines in business days. Distinguish policy from statute. This is what earns credibility with a Thinker.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Here's how the State process works in sequence. First, you submit an initial claim form through the State. That triggers an automated document request, typically 8 to 12 items. These include things like certified copies of birth certificates, government-issued ID, proof of address at the time of the original account.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Important distinction: many of these items are administrative policy, not statutory requirements under Texas Property Code Chapter 74. The State does not typically disclose which is which. If you do not provide everything on the list within the deadline — regardless of whether it's legally required — they deny or suspend the claim.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>If you do provide everything on time, the case gets assigned to a State Examiner. That assignment takes a minimum of 60 to 90 calendar days from submission. The Examiner then issues a secondary document request — the case-specific list, which is different from and in addition to the first list.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Total timeline for the average DIY claimant: six to nine months, assuming no denials or suspension. Most people abandon the process after the first document request. The State pays out less than three percent of held funds annually.</div>
+        <div class="cue-note">PAUSE. Let the data register. Move to SOLUTION.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="branch-block">
+    <div class="branch-label">Branch Logic</div>
+    <div class="branch-item">IF Prospect expresses concern or frustration → <span class="branch-node" onclick="goNode(8)">SOLUTION</span></div>
+    <div class="branch-item">IF Prospect objects or wants to try themselves → <span class="branch-node" onclick="goNode(18)">DIY_OBJECTION</span></div>
+  </div>
+</div>
+
+<!-- ═══ NODE 8: SOLUTION ═══ -->
+<div class="node" id="node-8">
+  <div class="node-header">
+    <div class="node-id-line"><span>NODE 08</span><span class="node-tag tag-first">FIRST CALL</span></div>
+    <div class="node-title">SOLUTION &mdash; Our Service</div>
+    <div class="node-meta">NEPQ: Solution Awareness | Voss: Contrast Principle + No-Oriented Close | Tone: COLLABORATIVE + SERIOUS/HONEST</div>
+  </div>
+  <div class="node-intro">Do not pitch. Present the contrast. The prospect just heard the State's process — your service value is entirely in the comparison. The commitment question at the end of this node is a soft first-call close: getting email confirmation and scheduling the follow-up. It is not the final sale.</div>
+
+  <div class="variant" data-v="U" id="8-U">
+    <div class="variant-block" data-v="U">
+      <div class="variant-header">[UNDETERMINED] — Core Contrast + Default Commitment Question</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>On this type of case, OUR CLIENTS typically receive their money in 45 to 60 days. We know the system, we know the players, and we know the shortcuts through their system.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Would you be opposed to receiving all the details on this in writing?</div>
+        <div class="cue-note">Alt: "Would it be an inconvenience if I were to email you all the details on this?" Voss: No-Oriented. "Opposed" and "inconvenience" both invite "No" which means yes to the email.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="D" id="8-D">
+    <div class="variant-block" data-v="D">
+      <div class="variant-header">[DIRECTOR] — Decisive, Efficient, Assumes the Next Step</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Our clients get their money in 45 to 60 days. We handle everything. You do nothing except sign and collect.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Shall I email you the details so you can review them and we can move forward?</div>
+        <div class="cue-note">Direct. Assumes the sale. One question. Do not add more.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="S" id="8-S">
+    <div class="variant-block" data-v="S">
+      <div class="variant-header">[SOCIALIZER] — Enthusiastic, "Good News" Frame</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Here's the good news — our clients typically have their money in 45 to 60 days. We know exactly how to navigate this system and we do it every single day.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>I'd love to send you all the details — would it be a bad idea if I shot that over to your email?</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="R" id="8-R">
+    <div class="variant-block" data-v="R">
+      <div class="variant-header">[RELATER] — Reassurance, "We Handle Everything"</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>The good news is that our clients typically receive their money in 45 to 60 days, and the best part is that we handle everything for you. You won't have to chase anyone down or deal with the State yourself.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Would you feel comfortable if I were to send you all the information so you could review it with your family and see how you feel about it?</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="T" id="8-T">
+    <div class="variant-block" data-v="T">
+      <div class="variant-header">[THINKER] — Track Record, Process Specifics, Documentation Offer</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Based on our track record with similar cases, our average resolution time is 45 to 60 days. We have direct channels with the State and know precisely which documentation satisfies each requirement — and which requirements are policy versus statute.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Would it be out of the question for me to send you the complete documentation — including our BBB rating, process outline, and client references — so you can review everything at your own pace?</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="branch-block">
+    <div class="branch-label">Branch Logic</div>
+    <div class="branch-item">IF Prospect agrees to receive info → <span class="branch-node" onclick="goNode(9)">TRANSITION</span></div>
+    <div class="branch-item">IF Prospect objects → <span class="branch-node" onclick="goNode(14)">OBJECTION_HANDLING</span></div>
+  </div>
+</div>
+
+<!-- ═══ NODE 9: TRANSITION ═══ -->
+<div class="node" id="node-9">
+  <div class="node-header">
+    <div class="node-id-line"><span>NODE 09</span><span class="node-tag tag-first">FIRST CALL</span></div>
+    <div class="node-title">TRANSITION &mdash; Schedule Follow-Up</div>
+    <div class="node-meta">NEPQ: Commitment (soft) | Voss: Reciprocity + No-Oriented Scheduling | Tone: COLLABORATIVE + ASSUMPTIVE/CASUAL</div>
+  </div>
+  <div class="node-intro">This is the first-call close. You are locking in a callback date and creating reciprocity by doing a favor (requesting the generic document list from document retrieval). The personal obligation story humanizes the agent and creates a natural reason for the specific follow-up date. Deliver the generic list favor as exactly that — a favor, not a standard procedure.</div>
+
+  <div class="variant" data-v="U" id="9-U">
+    <div class="variant-block" data-v="U">
+      <div class="variant-header">[UNDETERMINED] — Full Core Script</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Perfect — I'll get all the details over to you shortly.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>So, I'm going to be out most of the day tomorrow with my [personal obligation — e.g., daughter's dance recital, nephew's christening — say anything that makes you sound like you have a life], but I will be back on [2 days from now].</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>You know what — before I leave today, I'm going to ask a favor of a friend of mine in the document retrieval department to get you the initial generic list of documents the State is going to, quote unquote, REQUIRE from you. That will at least give you an idea of what you're up against.</div>
+        <div class="cue-note">Deliver this as a SPECIAL FAVOR. Voss: Reciprocity. You are doing something for them that creates an obligation to reciprocate.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>I'll put all this together... I'll include info about us, our A+ BBB rating, our five-star Google reviews — you know, all the usual paraphernalia.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Was [2 DAYS FROM NOW] good for you?</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Perfect! I'll have their generic list by then and if you feel like we might be a good solution for you, we can talk about possible next steps. Nice chatting with you!</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="D" id="9-D">
+    <div class="variant-block" data-v="D">
+      <div class="variant-header">[DIRECTOR] — Cut the Personal Story, Go Efficient</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>I'll have everything to you by end of day. I'll also include the State's document list so you can see exactly what you'd be dealing with on your own.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>I'll follow up [2 days from now]. Does that work?</div>
+        <div class="cue-note">No personal obligation story. No "paraphernalia" comment. Get in, lock the date, get out.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="S" id="9-S">
+    <div class="variant-block" data-v="S">
+      <div class="variant-header">[SOCIALIZER] — Keep It Personal, End Warmly</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Perfect! I'll get everything over to you shortly. And listen — I'm going to be out most of tomorrow because of [personal obligation — keep it colorful], but I'll be back [2 days from now].</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Before I head out, I'm going to ask my friend in the document retrieval department to pull that initial list for you — kind of a sneak preview of what the State is going to throw at you. Consider it a heads-up from me personally.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Was [2 days from now] good? Great — I've really enjoyed talking with you, and I'll have everything ready. Talk soon!</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="R" id="9-R">
+    <div class="variant-block" data-v="R">
+      <div class="variant-header">[RELATER] — Emphasize No Pressure, Include Family</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>I'll get all the information over to you shortly — there's no rush at all on your end. Take your time reading through everything, share it with your family if you'd like, and when we talk next I'm happy to answer any questions anyone might have.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>I'm also going to reach out to my contact in document retrieval and see if she can pull the State's initial requirements list for your case. That way you'll have a complete picture before we talk again.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Would [2 days from now] work for you? No pressure at all — if you need more time just let me know.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="T" id="9-T">
+    <div class="variant-block" data-v="T">
+      <div class="variant-header">[THINKER] — Specific Deliverables, No Personal Story</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>I'll send you our company information, the BBB documentation, our process overview, and I'll have my contact in document retrieval pull the State's preliminary document requirements for your specific case. That should give you a complete picture for a thorough review.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>I'll follow up [2 days from now]. Does that timeline work for you?</div>
+        <div class="cue-note">No personal obligation story. The Thinker wants to know what they are getting and when. Give them exactly that.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="branch-block">
+    <div class="branch-label">Branch Logic</div>
+    <div class="branch-item">IF Follow-up scheduled → <span class="branch-dispo">DISPOSITION: FOLLOWUP_SCHEDULED</span></div>
+  </div>
+</div>
+
+<!-- ═══ NODE 10: RECONNECT ═══ -->
+<div class="node" id="node-10">
+  <div class="node-header">
+    <div class="node-id-line"><span>NODE 10</span><span class="node-tag tag-second">SECOND CALL</span></div>
+    <div class="node-title">RECONNECT &mdash; Re-Engagement</div>
+    <div class="node-meta">NEPQ: Connection (re-establish) | Voss: No-Oriented Question + Humor + Mirroring | Tone: COLLABORATIVE then PLAYFUL</div>
+  </div>
+  <div class="node-intro">Load the personality type confirmed during First Call. If no type was confirmed (call ended UNDETERMINED), start with UNDETERMINED variant and use this call's opening response as a fresh detection window. The playful self-promotion line ("were you starstruck") is a humor probe — a Socializer will engage it enthusiastically, a Director will not engage it at all.</div>
+
+  <div class="variant" data-v="U" id="10-U">
+    <div class="variant-block" data-v="U">
+      <div class="variant-header">[UNDETERMINED] — Open, Then Read Their Response to Humor</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Hi [CLIENT NAME], this is [AGENT NAME] with Stealth Investigations, getting back to you... Is now a bad time?</div>
+        <div class="cue-note">Voss: No-Oriented. Wait for response.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>So — were you starstruck after reading all about just how incredibly awesome I am?</div>
+        <div class="cue-note">DETECTION WINDOW: Enthusiastic engagement with the humor = Socializer. Polite chuckle but redirects to business = likely Director or Thinker. Goes along warmly but gently = Relater. Pauses or asks a clarifying question = Thinker. Once you have a read, switch to the typed variant from this point forward.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="D" id="10-D">
+    <div class="variant-block" data-v="D">
+      <div class="variant-header">[DIRECTOR] — Skip Humor, Go Straight to Business</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Hi [NAME], [AGENT] with Stealth. Following up on our conversation from [day]. Did you have a chance to review the materials I sent?</div>
+        <div class="cue-note">No humor. No warmup. They remember the call — they do not need to be reoriented. Get to the status check immediately.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="S" id="10-S">
+    <div class="variant-block" data-v="S">
+      <div class="variant-header">[SOCIALIZER] — Lean Into the Humor</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Hey [NAME]! It's [AGENT] — were you starstruck? Be honest.</div>
+        <div class="cue-note">If they laugh or play along, ride it briefly — 15 to 20 seconds maximum. Then redirect.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>I'm glad you got a kick out of it. Did you get a chance to look over everything I sent?</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="R" id="10-R">
+    <div class="variant-block" data-v="R">
+      <div class="variant-header">[RELATER] — Warm, Softer Humor, Check-In First</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Hi [NAME], it's [AGENT] — I hope you've been doing well! Did you get a chance to look over what I sent? I hope it wasn't too overwhelming.</div>
+        <div class="cue-note">Skip the starstruck line or deliver it very softly as an optional warmup: "And I hope our review materials didn't put you to sleep!" Let them lead the tone.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="T" id="10-T">
+    <div class="variant-block" data-v="T">
+      <div class="variant-header">[THINKER] — Professional, Substance First</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Hi [NAME], [AGENT] with Stealth Investigations following up. I wanted to check if you had a chance to review the documentation and if you have any questions about the process or our qualifications.</div>
+        <div class="cue-note">No humor. They are preparing a list of questions. Get to it.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="branch-block">
+    <div class="branch-label">Branch Logic</div>
+    <div class="branch-item">IF Prospect engaged and reviewed materials → <span class="branch-node" onclick="goNode(11)">EDUCATE</span></div>
+    <div class="branch-item">IF Prospect did not review materials → <span class="branch-node" onclick="goNode(22)">RE_PRESENT_VALUE</span></div>
+    <div class="branch-item">IF Not interested → <span class="branch-node" onclick="goNode(14)">OBJECTION_HANDLING</span></div>
+  </div>
+</div>
+
+<!-- ═══ NODE 11: EDUCATE ═══ -->
+<div class="node" id="node-11">
+  <div class="node-header">
+    <div class="node-id-line"><span>NODE 11</span><span class="node-tag tag-second">SECOND CALL</span></div>
+    <div class="node-title">EDUCATE &mdash; Policy vs. Regulation</div>
+    <div class="node-meta">NEPQ: Problem Awareness (deepening) + Consequence | Voss: Labeling + Insider Knowledge Positioning | Tone: AUTHORITATIVE + PLAYFUL/SARCASTIC (brief)</div>
+  </div>
+  <div class="node-intro">Core teaching: the State's document requirements are administrative policy, not legal mandates. The restaurant-jacket analogy makes this memorable. The Thinker variant replaces the analogy with statutory citation. The Director variant skips the analogy entirely.</div>
+
+  <div class="variant" data-v="U" id="11-U">
+    <div class="variant-block" data-v="U">
+      <div class="variant-header">[UNDETERMINED] — Core Script with Analogy</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>I just got a message from my buddy over in the document retrieval department... she said she's still waiting for the State to get back with the generic list.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Most of the time — I'd say 80% of the time — when the State doesn't respond in this length of time, it's not a good sign...</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>So here's the game the State plays, and most people don't know this. Before I get to that, I need to back up a bit. There's a difference between POLICIES and REGULATIONS.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>And THIS is where the State plays in the gray area. The State comes back and says you're going to have to provide things like birth certificates, death certificates, marriage license copies...</div>
+        <div class="cue-note">TONE SHIFT: Sarcastic.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>...paternal great grandmother's second cousin's maiden name... it's really ridiculous.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Their HOPE is that people will just give up. And when people complain, they just say "That's our policy."</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>BUT — what they DON'T tell people is that providing a certified copy of a divorce decree, or whatever, is actually NOT a legal requirement.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>I like to explain it like this: it might be a restaurant's POLICY that you wear a jacket and tie. But that does NOT mean you are LEGALLY REQUIRED to wear a jacket and tie.</div>
+        <div class="cue-note">DETECTION — reaction to the analogy:
+          <div class="detection-table">
+            <div class="det-row"><span class="det-signal">Laughs or exclaims</span><span class="det-type det-S">= SOCIALIZER</span></div>
+            <div class="det-row"><span class="det-signal">"Interesting — so what IS legally required?"</span><span class="det-type det-T">= THINKER</span></div>
+            <div class="det-row"><span class="det-signal">Says quietly "Oh, I didn't know that"</span><span class="det-type det-R">= RELATER</span></div>
+            <div class="det-row"><span class="det-signal">Cuts in to move on</span><span class="det-type det-D">= DIRECTOR</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="D" id="11-D">
+    <div class="variant-block" data-v="D">
+      <div class="variant-header">[DIRECTOR] — Cut the Analogy, Give the Conclusion</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Quick update — document retrieval is still waiting on the State, which is typical. Here's what matters: the State's document requirements are policy, not law. They use them to discourage claims. We know the difference and we use it to our clients' advantage.</div>
+        <div class="cue-note">That's it. Transition to QUALIFY immediately. Do not tell the generic list story. Do not use the restaurant analogy.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="S" id="11-S">
+    <div class="variant-block" data-v="S">
+      <div class="variant-header">[SOCIALIZER] — Tell It With Energy, Use the Analogy</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Okay so I have an update from my friend in document retrieval — the State is dragging their feet, which is basically their specialty.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>So here's something most people never figure out — there's a difference between what the State SAYS you need and what they can actually REQUIRE you to provide by law. And the State loves to blur that line.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>You know how some fancy restaurants say you have to wear a jacket and tie to get in? But that's just their policy — they can't actually arrest you for showing up in jeans, right? Same idea here. The State asks for all this stuff, but a lot of it? Legally optional.</div>
+        <div class="cue-note">Let them react. If they say "Wait, really?!" — mirror it with energy.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Exactly! And they count on people not knowing that. We know the difference. That's a big part of what we do.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="R" id="11-R">
+    <div class="variant-block" data-v="R">
+      <div class="variant-header">[RELATER] — Softer Frame, Emphasize the Confusion Is Normal</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>I know this is a lot to take in, and I want you to know that everything you've been confused about or frustrated with is completely normal — the State makes it confusing on purpose.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>The most important thing to understand is that a lot of what the State asks for isn't actually required by law. It's policy. And there's a legal difference between the two that most people — and honestly most attorneys who don't specialize in this — don't fully understand.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>The good news is that we know exactly which requirements are legitimate and which ones are just meant to wear people down. That's where we can really help you.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="T" id="11-T">
+    <div class="variant-block" data-v="T">
+      <div class="variant-header">[THINKER] — Statutory Specifics, No Analogy</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Document retrieval is still waiting on the State, which is consistent with typical response times at this stage.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Here's the key legal distinction you should understand: Texas Property Code Chapter 74 outlines what is statutorily required vs. what falls under administrative policy. Many of the items on the State's standard document request list — certified marriage licenses, certain proof-of-identity documents — are administrative policy, not statutory mandates.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>The State does not typically disclose which requirements are legally binding and which are not. We know the difference for every item on the list, and we use that knowledge to cut through the unnecessary requirements and focus exclusively on what is legally required to process the claim.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="branch-block">
+    <div class="branch-label">Branch Logic</div>
+    <div class="branch-item">Continue to → <span class="branch-node" onclick="goNode(12)">QUALIFY</span></div>
+  </div>
+</div>
+
+<!-- ═══ NODE 12: QUALIFY ═══ -->
+<div class="node" id="node-12">
+  <div class="node-header">
+    <div class="node-id-line"><span>NODE 12</span><span class="node-tag tag-second">SECOND CALL</span></div>
+    <div class="node-title">QUALIFY &mdash; Fit Assessment</div>
+    <div class="node-meta">NEPQ: Solution Awareness | Voss: Accusation Audit + Calibrated Question + Labeling | Tone: SERIOUS/HONEST then COLLABORATIVE</div>
+  </div>
+  <div class="node-intro">The Accusation Audit ("not a good fit for everyone") is the most important line in this node. It eliminates the prospect's fear that you are trying to sell them something. Deliver it in SERIOUS/HONEST tone — flat, calm, not defensive. If you say it with any hint of a sales pitch, it fails.</div>
+
+  <div class="variant" data-v="U" id="12-U">
+    <div class="variant-block" data-v="U">
+      <div class="variant-header">[UNDETERMINED] — Core Accusation Audit + Calibrated Question</div>
+      <div class="variant-body">
+        <div class="cue-note">TONE: Switch to SERIOUS/HONEST. Flat, calm, not aggressive.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Sorry, I didn't mean to get off track there...</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>The reality is that the service we provide is NOT a good fit for everyone...</div>
+        <div class="cue-note">Pause after this line. Let it land. Then the calibrated question.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>How do you do with things like this? Things that require a lot of time and patience?</div>
+        <div class="cue-note">WAIT. Their answer reveals their DIY tolerance.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Do you feel like it would be a bad thing if we could save you the aggravation of having to deal with a whole series of State employees for the next several months?</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Did the information I sent over leave anything out that you might have questions about?</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Is there anything about the process that I didn't cover?</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="D" id="12-D">
+    <div class="variant-block" data-v="D">
+      <div class="variant-header">[DIRECTOR] — Skip "Rambling" Comment, Go Straight to the Decision</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>This process isn't something most people want to deal with. Based on everything we've covered — is this something you'd want us to handle?</div>
+        <div class="cue-note">No Accusation Audit needed for Directors — they respond to direct framing. One question. Wait.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="S" id="12-S">
+    <div class="variant-block" data-v="S">
+      <div class="variant-header">[SOCIALIZER] — Playful Framing, "Who Has Time for This?"</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Honestly, some people love tackling this kind of stuff themselves — and more power to them! But most of our clients tell us they would rather spend their time on literally anything else. How about you?</div>
+        <div class="cue-note">Light, conversational. Lets them opt out of the DIY path with a laugh rather than a heavy decision.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="R" id="12-R">
+    <div class="variant-block" data-v="R">
+      <div class="variant-header">[RELATER] — Gentle Framing, Invite Family Into the Decision</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>I know it can feel like a big decision. What does your family think about the situation? Would it give you peace of mind to have someone else handle all the back-and-forth with the State, so you don't have to?</div>
+        <div class="cue-note">Bring in the family consciously — the Relater will almost certainly involve them. Asking directly about their family's opinion positions you as thoughtful, not intrusive.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="T" id="12-T">
+    <div class="variant-block" data-v="T">
+      <div class="variant-header">[THINKER] — Data-Focused Assessment, Invite Their Questions</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Based on what you've reviewed, do you have any questions about our process, our qualifications, or the specifics of how we handle cases like yours? I want to make sure you have all the information you need before making any decision.</div>
+        <div class="cue-note">Skip the "not a good fit for everyone" line with Thinkers — they have already been assessing fit independently. Go straight to Q&A mode. Their questions are the close setup.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="branch-block">
+    <div class="branch-label">Branch Logic</div>
+    <div class="branch-item">IF Prospect is receptive → <span class="branch-node" onclick="goNode(13)">COMMITMENT</span></div>
+    <div class="branch-item">IF Prospect has questions or concerns → <span class="branch-node" onclick="goNode(14)">OBJECTION_HANDLING</span></div>
+  </div>
+</div>
+
+<!-- ═══ NODE 13: COMMITMENT ═══ -->
+<div class="node" id="node-13">
+  <div class="node-header">
+    <div class="node-id-line"><span>NODE 13</span><span class="node-tag tag-second">SECOND CALL</span></div>
+    <div class="node-title">COMMITMENT &mdash; Close</div>
+    <div class="node-meta">NEPQ: Commitment | Voss: No-Oriented Questions (rotate) | Tone: ASSUMPTIVE/CASUAL</div>
+  </div>
+  <div class="node-intro">Do not cycle through all eight closing questions. Pick one based on personality type and conversation flow. If the prospect says yes, move immediately to paperwork. If they object, route to OBJECTION_HANDLING.</div>
+
+  <div class="variant" data-v="U" id="13-U">
+    <div class="variant-block" data-v="U">
+      <div class="variant-header">[UNDETERMINED] — Use the Default No-Oriented Bank</div>
+      <div class="variant-body">
+        <div class="cue-note">If type is still undetermined, start with the softest option and let their response guide you:</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Would you be opposed to allowing us to move forward with recovering your money from the State?</div>
+        <div class="cue-note">If they hesitate: "Do you feel like this would be something you would be uncomfortable moving forward with?" If they seem open but cautious, move straight to paperwork framing.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Then I guess, really, the next step would be to move forward with the process. Would it be inappropriate for us to start the paperwork at this point?</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="D" id="13-D">
+    <div class="variant-block" data-v="D">
+      <div class="variant-header">[DIRECTOR] — One Direct Question, Assume the Sale</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Would you be against us moving forward from here?</div>
+        <div class="cue-note">One question. If they say no (meaning they agree) — go straight to paperwork. If they push back, hold frame. Do not cycle through more closing questions.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="S" id="13-S">
+    <div class="variant-block" data-v="S">
+      <div class="variant-header">[SOCIALIZER] — Excitement-Based, "This Is Going to Be Great"</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Do you think it might be a crazy idea to let us handle this and get your money back for you?</div>
+        <div class="cue-note">If they laugh or say no (agreeing) — match the energy:</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Right? This is going to be great. Let me get the paperwork started.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="R" id="13-R">
+    <div class="variant-block" data-v="R">
+      <div class="variant-header">[RELATER] — Gentlest Options, "We'll Be Right There With You"</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Do you feel like you would be uncomfortable moving forward with this?</div>
+        <div class="cue-note">If they indicate they are comfortable:</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>We'll be right there with you every step of the way. You won't have to deal with any of it alone.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Would it be inappropriate for us to go ahead and start the paperwork?</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="T" id="13-T">
+    <div class="variant-block" data-v="T">
+      <div class="variant-header">[THINKER] — Logic-Based, Walk Through Every Line</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Based on everything we've covered, do you feel it would be out of the question to move forward?</div>
+        <div class="cue-note">If they agree:</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>The next step is simply the paperwork, and I can walk you through every line if you'd like. Nothing will happen without your review and sign-off.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="branch-block">
+    <div class="branch-label">Branch Logic</div>
+    <div class="branch-item">IF Prospect commits → <span class="branch-dispo">DISPOSITION: SALE_CLOSED</span></div>
+    <div class="branch-item">IF Prospect objects → <span class="branch-node" onclick="goNode(14)">OBJECTION_HANDLING</span></div>
+    <div class="branch-item">IF Needs more time → <span class="branch-dispo">DISPOSITION: FOLLOWUP_REQUIRED</span></div>
+  </div>
+</div>
+
+<!-- ═══ NODE 14: OBJECTION_HANDLING ═══ -->
+<div class="node" id="node-14">
+  <div class="node-header">
+    <div class="node-id-line"><span>NODE 14</span><span class="node-tag tag-obj">OBJECTIONS</span></div>
+    <div class="node-title">OBJECTION_HANDLING &mdash; Master Branch</div>
+    <div class="node-meta">Voss: Mirroring + Forced Binary Choice | Tone: COLLABORATIVE then CONCERNED</div>
+  </div>
+  <div class="node-intro">This core script is personality-neutral by design. Mirror their exact words back, then give the binary choice. Their answer to the binary and their response to the tactical silence will almost always reveal personality type if you still do not have a read. Personality variants begin at INTERESTED_NOT_SURE.</div>
+
+  <div class="variant visible" id="14-ALL">
+    <div class="variant-block" data-v="ALL">
+      <div class="variant-header">[ALL TYPES] — Universal Core Script</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>You know, it's been my experience that people who say [MIRROR THEIR EXACT WORDS BACK] always fall into one of two camps — either they're Not Interested, OR they're Interested But Not Sure...</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Which one of those do you fall into?</div>
+        <div class="cue-note">Voss: Mirroring + forced binary. This eliminates vague stalling and forces a position.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="branch-block">
+    <div class="branch-label">Branch Logic</div>
+    <div class="branch-item">IF "Not Interested" → <span class="branch-node" onclick="goNode(20)">SOFT_CLOSE</span></div>
+    <div class="branch-item">IF "Interested But Not Sure" → <span class="branch-node" onclick="goNode(15)">INTERESTED_NOT_SURE</span></div>
+  </div>
+</div>
+
+<!-- ═══ NODE 15: INTERESTED_NOT_SURE ═══ -->
+<div class="node" id="node-15">
+  <div class="node-header">
+    <div class="node-id-line"><span>NODE 15</span><span class="node-tag tag-obj">OBJECTIONS</span></div>
+    <div class="node-title">INTERESTED_NOT_SURE &mdash; Dig for Real Objection</div>
+    <div class="node-meta">Voss: Label + Tactical Silence | Tone: COLLABORATIVE</div>
+  </div>
+  <div class="node-intro">After the binary choice, this is the silence node. The label ("It SEEMS like you have a really good reason for saying that") is a question disguised as a statement. Upward inflection at the end. Then absolute silence. The prospect will fill the silence with their real objection.</div>
+
+  <div class="variant" data-v="U" id="15-U">
+    <div class="variant-block" data-v="U">
+      <div class="variant-header">[UNDETERMINED] — Core Label + Silence Protocol</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Okay, Interested But Not Sure... It SEEMS like you have a really good reason for saying that?</div>
+        <div class="cue-note">Upward inflection. Then TOTAL SILENCE. Count to 10 in your head. Do not speak first. The prospect will fill the void.</div>
+        <div class="cue-note">DETECTION — how they handle the silence:
+          <div class="detection-table">
+            <div class="det-row"><span class="det-signal">Gives you a direct answer immediately</span><span class="det-type det-D">= DIRECTOR</span></div>
+            <div class="det-row"><span class="det-signal">Starts talking and tells you a story about their hesitation</span><span class="det-type det-S">= SOCIALIZER</span></div>
+            <div class="det-row"><span class="det-signal">Hesitates, sounds uncomfortable, eventually gives a vague answer</span><span class="det-type det-R">= RELATER</span></div>
+            <div class="det-row"><span class="det-signal">Asks a clarifying question before answering</span><span class="det-type det-T">= THINKER</span></div>
+          </div>
+        </div>
+        <div class="cue-note">If they give a real objection: "Oh, okay... I think [REPEAT THEIR EXACT OBJECTION] is a legitimate reason/concern." Then route. If they do not give a real objection, proceed to systematic probing: Probe 1 (Credibility), Probe 2 (Fee), Probe 3 (DIY).</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="D" id="15-D">
+    <div class="variant-block" data-v="D">
+      <div class="variant-header">[DIRECTOR] — Shorter Silence Tolerance, Move Fast if Silence Extends</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Interested But Not Sure... It seems like you have a good reason for that?</div>
+        <div class="cue-note">If silence extends past 5 seconds: "What's the holdup?" — direct, not harsh. They will respect the directness.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="S" id="15-S">
+    <div class="variant-block" data-v="S">
+      <div class="variant-header">[SOCIALIZER] — They Will Fill Silence Quickly, Let the Story Come Out</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Okay, Interested But Not Sure... It seems like something's on your mind?</div>
+        <div class="cue-note">They will fill the silence almost immediately with a story, an explanation, or a concern framed as a narrative. Let them finish completely before responding. Do not interrupt. The more they talk, the more you learn.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="R" id="15-R">
+    <div class="variant-block" data-v="R">
+      <div class="variant-header">[RELATER] — They May Need Gentle Encouragement to Share</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Okay, Interested But Not Sure... It seems like there might be something you're not quite sure about?</div>
+        <div class="cue-note">Hold the silence for 8 to 10 seconds. If they still have not answered, a gentle prompt is acceptable:</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>It's okay to share — I just want to make sure I'm being helpful.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="T" id="15-T">
+    <div class="variant-block" data-v="T">
+      <div class="variant-header">[THINKER] — Silence Is Processing, Not Discomfort — Hold Longer</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Interested But Not Sure... It seems like you have a specific reason for that?</div>
+        <div class="cue-note">Hold silence for a full 12 to 15 seconds if needed. A Thinker's silence is analytical — they are organizing their thoughts. Breaking it early signals impatience and will cost you. When they do speak, their objection will be specific and will likely require a specific response. Be ready.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="branch-block">
+    <div class="branch-label">Branch Logic</div>
+    <div class="branch-item">IF they give a real objection → route to <span class="branch-node" onclick="goNode(16)">CREDIBILITY_OBJECTION</span>, <span class="branch-node" onclick="goNode(17)">FEE_OBJECTION</span>, or <span class="branch-node" onclick="goNode(18)">DIY_OBJECTION</span> based on content</div>
+    <div class="branch-item">IF no real objection surfaced → Probe 1: <span class="branch-node" onclick="goNode(16)">CREDIBILITY_OBJECTION</span></div>
+    <div class="branch-item">IF Probe 1 is not the issue → Probe 2: <span class="branch-node" onclick="goNode(17)">FEE_OBJECTION</span></div>
+    <div class="branch-item">IF Probe 2 is not the issue → Probe 3: <span class="branch-node" onclick="goNode(18)">DIY_OBJECTION</span></div>
+    <div class="branch-item">IF none of the above → <span class="branch-node" onclick="goNode(19)">UNKNOWN_OBJECTION</span></div>
+  </div>
+</div>
+
+<!-- ═══ NODE 16: CREDIBILITY_OBJECTION ═══ -->
+<div class="node" id="node-16">
+  <div class="node-header">
+    <div class="node-id-line"><span>NODE 16</span><span class="node-tag tag-obj">OBJECTIONS</span></div>
+    <div class="node-title">CREDIBILITY_OBJECTION &mdash; Trust / Legitimacy</div>
+    <div class="node-meta">Voss: Accusation Audit + Isolation Question + No-Oriented Resolution | Tone: SERIOUS/HONEST + COLLABORATIVE</div>
+  </div>
+  <div class="node-intro">Credibility points: 20+ years in business | BBB A+ Rating | Five-Star Google Reviews | Licensed and regulated by the Texas Department of Public Safety. Isolate first before covering the points.</div>
+
+  <div class="variant" data-v="U" id="16-U">
+    <div class="variant-block" data-v="U">
+      <div class="variant-header">[UNDETERMINED] — Accusation Audit Probe + Isolation + Cover Points</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Okay, so maybe you're feeling like "Hey, I just don't really know who you are or if this is really legitimate"... would it be ridiculous for me to assume that's what's on your mind?</div>
+        <div class="cue-note">Voss: Accusation Audit + No-Oriented. Name their fear before they do.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Okay... fair enough... and thanks for being honest with me.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Is this the ONLY thing that's holding you back?</div>
+        <div class="cue-note">ISOLATE. If there is a second objection, surface it now before proceeding.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>So... if you were to feel like, TO YOUR SATISFACTION, that everything is on the up and up... that [REPORTING COMPANY] has in fact rolled your money over to the State, AND that I'm not some fly-by-night rip-off artist... that you feel satisfied that we do what we say we will do... would you then, possibly, feel like you might be comfortable with exploring the possibility of allowing us to assist with moving your case forward? Would that be impossible?</div>
+        <div class="cue-note">Cover: 20+ years | A+ BBB | Google Reviews | Texas DPS license. Then:</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Do you feel there might be anything with any of that that might leave you feeling uncomfortable in any way?</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>So... would you be against moving forward from here effectively?</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="D" id="16-D">
+    <div class="variant-block" data-v="D">
+      <div class="variant-header">[DIRECTOR] — Brief, Evidence-Forward, One Pass Only</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>We've been doing this 20-plus years. A+ BBB, five-star Google reviews, licensed by Texas DPS. Want me to send you the verification links right now?</div>
+        <div class="cue-note">One pass. Do not over-sell. If they are satisfied, close. If not, ask what else is holding them back — do not repeat the credibility points.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="S" id="16-S">
+    <div class="variant-block" data-v="S">
+      <div class="variant-header">[SOCIALIZER] — Social Proof Heavy, Stories and Reviews</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>I totally get it — you don't know us from Adam. Here's what I'd tell you: our Google reviews are real people, real stories. We've had our A+ BBB rating for over 20 years. That's pretty hard to fake.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>We're also licensed and regulated by the Texas Department of Public Safety — which means the State of Texas itself has reviewed and approved what we do.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Would it be a bad idea for me to send you the links right now so you can look for yourself? Most people feel a lot better once they do.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="R" id="16-R">
+    <div class="variant-block" data-v="R">
+      <div class="variant-header">[RELATER] — Gentle Walk-Through, Offer to Include Family</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>I completely understand wanting to feel safe about this — that's actually a smart reaction. Let me share some things that might help put your mind at ease.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>We've been in business for over 20 years. Our BBB rating is A-plus. Our Google reviews are from real clients. And we're licensed and regulated by the Texas Department of Public Safety.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Would you like me to send you links to all of those so you and your family can look them over at your own pace?</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="T" id="16-T">
+    <div class="variant-block" data-v="T">
+      <div class="variant-header">[THINKER] — Encourage Independent Verification, Provide Direct Links</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>I'd actually encourage you to verify everything independently. Our BBB profile is public. Our Texas DPS license is verifiable on the state website. Our Google reviews are unfiltered. I can send you direct links to each.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>If you'd like, I can also send you our license number so you can run it yourself through the DPS database. That's the most direct way to confirm we are who we say we are.</div>
+        <div class="cue-note">Do not ask them to take your word for anything. Give them the tools to verify and step back.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="branch-block">
+    <div class="branch-label">Branch Logic</div>
+    <div class="branch-item">IF resolved → <span class="branch-node" onclick="goNode(13)">COMMITMENT</span> (or close from here)</div>
+    <div class="branch-item">IF still unsure → <span class="branch-node" onclick="goNode(17)">FEE_OBJECTION</span></div>
+  </div>
+</div>
+
+<!-- ═══ NODE 17: FEE_OBJECTION ═══ -->
+<div class="node" id="node-17">
+  <div class="node-header">
+    <div class="node-id-line"><span>NODE 17</span><span class="node-tag tag-obj">OBJECTIONS</span></div>
+    <div class="node-title">FEE_OBJECTION &mdash; Rate / Fee Concern</div>
+    <div class="node-meta">Voss: Calibrated Question + Supervisor Escalation | Tone: COLLABORATIVE + SERIOUS/HONEST</div>
+  </div>
+  <div class="node-intro">Isolate first. Then value-justify the 10% before asking what they think is fair. No matter what number they give back, the escalation to supervisor framing is the move — it gives you a mechanism without committing to a specific rate reduction. Skip the bank story with Directors. Use it fully with Socializers.</div>
+
+  <div class="variant" data-v="U" id="17-U">
+    <div class="variant-block" data-v="U">
+      <div class="variant-header">[UNDETERMINED] — Probe + Value Story + Supervisor Escalation</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>All right, so if you're comfortable with our BBB and Google reviews, it seems like, maybe, you might possibly feel like the 10% fee is out of line... would it be out of the question for me to assume that THIS might be what you're feeling?</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Okay... fair enough... and thanks for being honest with me. Is this the ONLY thing that's holding you back?</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Okay, so our standard rate IS 10%, and quite honestly, in my opinion, sometimes that's a fair rate and sometimes it's not. Sometimes the cases are too complex, involve too many people, or require too many hours for us to handle effectively.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>For example — we know from experience that when dealing with [BANK THAT IS NOT THE REPORTING COMPANY], the State requires that [BANK] provide independent verification of the bank account, mailed directly from [BANK] to the State. The problem is that [BANK] typically doesn't comply for a minimum of six months — if they ever comply at all. So we hit them with a minimum of two additional verification requests per week until they do. That usually gets them to comply within 45 to 60 days.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>The point is there is a lot more involved than most people think.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Anyway — considering our standard rate is 10%, what is it that YOU think would be fair?</div>
+        <div class="cue-note">Voss: Calibrated "What" question. Give them the illusion of control. No matter what they say:</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>OK... I'm really not sure what might be involved with cases involving [REPORTING COMPANY]... Do you feel like it might be out of line if I were to ask my supervisor whether there's any room for negotiation on this?</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="D" id="17-D">
+    <div class="variant-block" data-v="D">
+      <div class="variant-header">[DIRECTOR] — Skip Bank Story, Fast Transaction</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Our rate is 10%. That covers everything — all filings, all follow-ups, all compliance work. What number would work for you?</div>
+        <div class="cue-note">Wait. Whatever they say:</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Let me check with my supervisor. I'll have an answer for you before we hang up.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="S" id="17-S">
+    <div class="variant-block" data-v="S">
+      <div class="variant-header">[SOCIALIZER] — Bank Story With Energy, Behind-the-Scenes Appeal</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>You would not BELIEVE what we go through with some of these banks. Here's what I mean...</div>
+        <div class="cue-note">Tell the full bank story with enthusiasm. They will appreciate the insider look.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>So yeah — 10% sounds like a lot until you see what actually goes into it. And honestly? For some cases, it's a bargain.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>What do you think would feel fair to you? Whatever you say, I'll take it to my supervisor and see what we can do.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="R" id="17-R">
+    <div class="variant-block" data-v="R">
+      <div class="variant-header">[RELATER] — Empathy First, Gentle Escalation</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>I completely understand — nobody likes unexpected costs, and I want you to feel good about this. Let me explain what goes into that 10% so you can see what you're actually getting...</div>
+        <div class="cue-note">Walk through the bank story at a slower pace. Emphasize that the fee is only due when the State releases the funds.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Would you feel comfortable if I checked with my supervisor to see if there's any flexibility? I'm not making any promises, but I want to do right by you on this.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="T" id="17-T">
+    <div class="variant-block" data-v="T">
+      <div class="variant-header">[THINKER] — Cost-Benefit Breakdown, No Story Needed</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Consider the alternative: six-plus months of your time, multiple document requests, follow-up calls, potential denials and resubmissions. Our 10% covers all of that activity, with an average resolution of 45 to 60 days.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Based on the case amount, here is what the math looks like: our fee is [AMOUNT x 10%]. The cost of doing this yourself — in time, potential errors, and the 97% chance the State stalls you indefinitely — is difficult to quantify but significant.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>If you'd like, I can check with my supervisor about the rate structure for your specific case.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="branch-block">
+    <div class="branch-label">Branch Logic</div>
+    <div class="branch-item">IF resolved at 10% → <span class="branch-node" onclick="goNode(13)">COMMITMENT</span> (or close from here)</div>
+    <div class="branch-item">IF supervisor review needed → <span class="branch-node" onclick="goNode(25)">SUPERVISOR_CALLBACK</span></div>
+    <div class="branch-item">IF still objecting → <span class="branch-node" onclick="goNode(18)">DIY_OBJECTION</span></div>
+  </div>
+</div>
+
+<!-- ═══ NODE 18: DIY_OBJECTION ═══ -->
+<div class="node" id="node-18">
+  <div class="node-header">
+    <div class="node-id-line"><span>NODE 18</span><span class="node-tag tag-obj">OBJECTIONS</span></div>
+    <div class="node-title">DIY_OBJECTION &mdash; Wants to Do It Themselves</div>
+    <div class="node-meta">Voss: 3% Reveal + Future-Pacing No-Oriented | Tone: SERIOUS/HONEST then COLLABORATIVE</div>
+  </div>
+  <div class="node-intro">The 3% statistic is the central weapon here. Pause after it. Let it register. You are not arguing with their decision — you are future-pacing them to the moment when the State has worn them down, and planting the idea that calling you at that point is a completely reasonable and available option. The offer stays open. No pressure today.</div>
+
+  <div class="variant" data-v="U" id="18-U">
+    <div class="variant-block" data-v="U">
+      <div class="variant-header">[UNDETERMINED] — 3% Reveal + Future-Pacing</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>So, Interested But Not Sure, and you've seen that our BBB A+ rating and Google reviews are solid, AND you don't feel that our 10% contingency rate is out of line... then usually that would mean that you just might be wanting to work on this on your own... is THAT it?</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Okay... fair enough... and thanks for being honest with me. Is this the ONLY thing that's holding you back?</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Okay. Here's what most people don't know about the State's process — and this is NOT unique to Texas. Virtually every State operates with this model.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>The reality is there are BILLIONS upon BILLIONS of dollars being held by the State of Texas, just like this. But here is the part most people never find out — the State has an ANNUAL BUDGET of how much they are going to pay out of that fund each year. And for the past 20-plus years, that annual budget has NEVER exceeded THREE percent. Not thirty percent — THREE percent.</div>
+        <div class="cue-note">LONG PAUSE. Let the number sink in. Do not rush past this.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>So 97% of those funds do not get released. The State accomplishes this by throttling payments and — in my opinion — misleading people into believing that their policies are mandated by law.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Now, that's not to say YOU might not get lucky and fall into that three percent. It IS possible.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Say in 60 days or so — IF THE STATE IS STILL JERKING YOU AROUND AT THAT POINT — would you be against maybe exploring the possibility of allowing us to assist with moving your case forward? IF THEY'RE STILL JERKING YOU AROUND — would that be an impossibility?</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="D" id="18-D">
+    <div class="variant-block" data-v="D">
+      <div class="variant-header">[DIRECTOR] — Hit the Number Hard, Respect the DIY Decision</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Three percent payout rate annually. That means 97% of DIY claimants get stalled or nothing. We get our clients into that three percent in 45 to 60 days.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>That's your call. If they give you grief in 60 days, my number is [AGENT NUMBER]. Offer stands.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="S" id="18-S">
+    <div class="variant-block" data-v="S">
+      <div class="variant-header">[SOCIALIZER] — Shock the 3%, Energy on the Future-Pacing</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>THREE percent! Can you believe that?! That means 97% of people who try this on their own are just... stuck. Waiting forever. Or giving up.</div>
+        <div class="cue-note">Let them react. Mirror their response briefly.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Tell you what — give it a shot. If the State gives you grief, call me directly. I'll be here, and the offer doesn't expire.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="R" id="18-R">
+    <div class="variant-block" data-v="R">
+      <div class="variant-header">[RELATER] — Gentle, "I Don't Want You to Go Through That"</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>I don't want you to go through months of stress and frustration just to end up back where you started. But I also completely respect that you want to try it yourself — that makes sense.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>How about this — if after 60 days you're feeling overwhelmed or like it's going nowhere, would you feel comfortable reaching back out to us? We'll still be here for you. The offer doesn't go away.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="T" id="18-T">
+    <div class="variant-block" data-v="T">
+      <div class="variant-header">[THINKER] — Statistical Framing, Logical Future-Pacing</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Statistically, the State pays out less than three percent of held funds annually. That's a 97% non-payment rate for unassisted claimants. Our success rate with cases like yours is significantly higher because we know which requirements are legally binding, which are not, and how to use that distinction.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>I'd suggest giving it 60 days. If you're not making measurable progress by then, the offer stands. Would you be open to noting a 60-day checkpoint?</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="branch-block">
+    <div class="branch-label">Branch Logic</div>
+    <div class="branch-item">IF Prospect agrees to 60-day callback → <span class="branch-dispo">DISPOSITION: FOLLOWUP_60DAY</span></div>
+    <div class="branch-item">IF Prospect commits now → <span class="branch-dispo">DISPOSITION: SALE_CLOSED</span></div>
+    <div class="branch-item">IF Prospect declines entirely → <span class="branch-dispo">DISPOSITION: NO_INTEREST</span></div>
+  </div>
+</div>
+
+<!-- ═══ NODE 19: UNKNOWN_OBJECTION ═══ -->
+<div class="node" id="node-19">
+  <div class="node-header">
+    <div class="node-id-line"><span>NODE 19</span><span class="node-tag tag-obj">OBJECTIONS</span></div>
+    <div class="node-title">UNKNOWN_OBJECTION &mdash; None of the Above</div>
+    <div class="node-meta">Voss: Ultimate Calibrated Question + No-Oriented Framing | Tone: COLLABORATIVE + HONEST</div>
+  </div>
+  <div class="node-intro">You have probed all three standard objection branches and nothing surfaced. The script here uses maximum hedging language combined with a no-oriented frame to make asking the question as safe as possible.</div>
+
+  <div class="variant" data-v="U" id="19-U">
+    <div class="variant-block" data-v="U">
+      <div class="variant-header">[UNDETERMINED] — Out-of-Ideas Frame + Ultimate Probe</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Okay... so now I have to admit that I'm out of ideas. 99% of the people who say they're Interested But Not Sure fall into one of those three camps.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Do you feel it would be inappropriate for me to ask you what it would take for you to possibly feel comfortable with maybe allowing us to assist with moving your case forward and getting the State to secure the release of the funds to you?</div>
+        <div class="cue-note">SILENCE after this. Maximum softness. They will talk. Whatever they say — that is the real objection. Route accordingly.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="D" id="19-D">
+    <div class="variant-block" data-v="D">
+      <div class="variant-header">[DIRECTOR] — Direct, No Hedging</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>I'm not sure what's holding you back. What would need to be true for you to move forward?</div>
+        <div class="cue-note">Short, direct, no apology. They will tell you.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="S" id="19-S">
+    <div class="variant-block" data-v="S">
+      <div class="variant-header">[SOCIALIZER] — Lighthearted, Invite the Real Story</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Well, you've stumped me! I'm zero for three. Help me out here — what's actually on your mind?</div>
+        <div class="cue-note">They will laugh and then tell you. The lighthearted framing lowers the pressure enough for them to share.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="R" id="19-R">
+    <div class="variant-block" data-v="R">
+      <div class="variant-header">[RELATER] — Warm, Permission-Seeking</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>I can tell something is still weighing on you, and that's completely okay. Would you feel comfortable sharing what it is? I just want to make sure I'm being genuinely helpful here.</div>
+        <div class="cue-note">Soft and patient. Do not rush them. They may need a moment before they can articulate it.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="T" id="19-T">
+    <div class="variant-block" data-v="T">
+      <div class="variant-header">[THINKER] — Identify the Missing Data Point</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>We've covered credibility, cost, and the DIY option. Is there a specific piece of information or a particular aspect of the process that would help you make a more informed decision?</div>
+        <div class="cue-note">The Thinker has a specific logical gap. Name it back to them as a data question, not an emotional one.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="branch-block">
+    <div class="branch-label">Branch Logic</div>
+    <div class="branch-item">IF real objection surfaces → route to <span class="branch-node" onclick="goNode(16)">CREDIBILITY_OBJECTION</span>, <span class="branch-node" onclick="goNode(17)">FEE_OBJECTION</span>, or <span class="branch-node" onclick="goNode(18)">DIY_OBJECTION</span></div>
+    <div class="branch-item">IF still no clarity → <span class="branch-dispo">DISPOSITION: FOLLOWUP_REQUIRED</span></div>
+  </div>
+</div>
+
+<!-- ═══ NODE 20: SOFT_CLOSE ═══ -->
+<div class="node" id="node-20">
+  <div class="node-header">
+    <div class="node-id-line"><span>NODE 20</span><span class="node-tag tag-obj">OBJECTIONS</span></div>
+    <div class="node-title">SOFT_CLOSE &mdash; Not Interested Path</div>
+    <div class="node-meta">Voss: Soft No-Oriented Exit | Tone: COLLABORATIVE + RESPECTFUL</div>
+  </div>
+  <div class="node-intro">The prospect has chosen the "Not Interested" side of the binary. This is not the end of the relationship — the money does not expire. The goal here is to leave a clean exit, plant a seed, and get permission to send contact information so the door stays open.</div>
+
+  <div class="variant" data-v="U" id="20-U">
+    <div class="variant-block" data-v="U">
+      <div class="variant-header">[UNDETERMINED] — Core Universal Exit</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>I completely understand, and I appreciate you being upfront with me. Just so you know, this money doesn't go away — it's sitting with the State indefinitely. If anything ever changes and you'd like some help, my name is [AGENT NAME] at Stealth Investigations. Would it be a bad idea if I sent you my contact information, just in case?</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="D" id="20-D">
+    <div class="variant-block" data-v="D">
+      <div class="variant-header">[DIRECTOR] — Respect the Decision, One-Line Value Reminder, Done</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Understood. The money stays with the State until someone claims it — no expiration. If that ever changes for you, here is how to reach us.</div>
+        <div class="cue-note">No lingering. No guilt. They respect clean exits. Give it to them.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="S" id="20-S">
+    <div class="variant-block" data-v="S">
+      <div class="variant-header">[SOCIALIZER] — Warm Goodbye, Social Proof Plant</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Hey, I totally get it — it's not the right time and that's completely fine. For what it's worth, most of our clients tell us they wish they had called sooner once they got through the State's process on their own. But that's for another day.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>It was really great talking with you. I'll drop my contact info in the email just in case — no pressure at all.</div>
+        <div class="cue-note">Keep it warm. Leave them smiling. They may refer someone else even if they do not convert.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="R" id="20-R">
+    <div class="variant-block" data-v="R">
+      <div class="variant-header">[RELATER] — Gentle Exit, Leave Door Open for Family</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>That's completely okay — there's absolutely no pressure here. If you ever want to talk about it again, or if someone in your family thinks it might be worth exploring, please don't hesitate to reach out. I'll include my contact information in the email.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Take care of yourself, and I genuinely hope everything goes smoothly for you.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="T" id="20-T">
+    <div class="variant-block" data-v="T">
+      <div class="variant-header">[THINKER] — Offer Documentation for Independent Review</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>I understand. If you ever want to revisit this, I'm happy to send you documentation on our process, our credentials, and the relevant Texas statutes so you have a complete reference if the situation changes.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>The funds remain with the State indefinitely. If circumstances change, you know where to find us.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="branch-block">
+    <div class="branch-label">Branch Logic</div>
+    <div class="branch-item"><span class="branch-dispo">DISPOSITION: NO_INTEREST</span></div>
+  </div>
+</div>
+
+<!-- ═══ NODE 21: INBOUND_START ═══ -->
+<div class="node" id="node-21">
+  <div class="node-header">
+    <div class="node-id-line"><span>NODE 21</span><span class="node-tag tag-inbound">INBOUND</span></div>
+    <div class="node-title">INBOUND_START &mdash; Receive and Identify</div>
+    <div class="node-meta">NEPQ: Connection | Voss: Accusation Audit (when needed) | Tone: COLLABORATIVE</div>
+  </div>
+  <div class="node-intro">Inbound callers have already taken action by calling — this is a warm lead. Their reason for calling IS the first diagnostic data point. INBOUND_START does not have a barrel-through opening because the agent is receiving, not initiating. Personality detection starts from their first sentence.</div>
+
+  <div class="variant" data-v="U" id="21-U">
+    <div class="variant-block" data-v="U">
+      <div class="variant-header">[UNDETERMINED] — Standard Inbound Greeting + Case Pull</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Stealth Investigations, this is [AGENT NAME]. How can I help you today?</div>
+        <div class="cue-note">DETECTION WINDOW: How they open the call is the primary diagnostic signal:
+          <div class="detection-table">
+            <div class="det-row"><span class="det-signal">"What is this about?" / "How much money?" / short, direct</span><span class="det-type det-D">= DIRECTOR</span></div>
+            <div class="det-row"><span class="det-signal">"Oh! I got this letter and I was telling my friend..." / story-first</span><span class="det-type det-S">= SOCIALIZER</span></div>
+            <div class="det-row"><span class="det-signal">"I wasn't sure if I should call..." / uncertain, cautious</span><span class="det-type det-R">= RELATER</span></div>
+            <div class="det-row"><span class="det-signal">"I received your letter. Can you explain exactly what this is?"</span><span class="det-type det-T">= THINKER</span></div>
+          </div>
+        </div>
+        <div class="cue-note">Script for "I received a letter / notification from you":</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Oh great! Yes, we've been researching a case that involves you. There should be a Property ID Number on the letter we sent — do you happen to have that handy? That will help me pull up your file right away.</div>
+        <div class="cue-note">If no Property ID: "No problem at all. Can I get your full name? I'll look you up that way."</div>
+        <div class="cue-note">Script for "Is this a scam? / Is this legitimate?":</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>I totally understand why you'd ask that — honestly, I'd be suspicious too if I got a letter out of the blue saying someone owed me money. That's a completely reasonable reaction. Let me give you some information that might put your mind at ease.</div>
+        <div class="cue-note">Then cover: 20+ years | BBB A+ | Texas DPS license | Google reviews. Offer verification links.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="D" id="21-D">
+    <div class="variant-block" data-v="D">
+      <div class="variant-header">[DIRECTOR] — Fast Case Pull, Facts Immediately</div>
+      <div class="variant-body">
+        <div class="cue-note">They opened with "What is this about?" or "How much?" Do not slow them down.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Let me pull your file. Your name?</div>
+        <div class="cue-note">Pull the file. Deliver case details immediately. No warmup. No story. Amount, company, year. Move.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="S" id="21-S">
+    <div class="variant-block" data-v="S">
+      <div class="variant-header">[SOCIALIZER] — Let Them Tell Their Story, Then Redirect</div>
+      <div class="variant-body">
+        <div class="cue-note">They likely opened with a story about receiving the letter or telling someone about it.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>I'm so glad you called! Let me pull up your case and tell you exactly what we found.</div>
+        <div class="cue-note">Allow 15-20 seconds of their story before gently redirecting. They feel heard; you get the file up.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="R" id="21-R">
+    <div class="variant-block" data-v="R">
+      <div class="variant-header">[RELATER] — Reassure First, Then Pull File</div>
+      <div class="variant-body">
+        <div class="cue-note">They likely opened cautiously: "I got this letter and I wasn't sure if I should call..."</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>I'm really glad you called. There's nothing to worry about — let me explain everything so you feel completely comfortable.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Can I get your name, or the Property ID from the letter? I'll pull up your file and walk you through it step by step.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="T" id="21-T">
+    <div class="variant-block" data-v="T">
+      <div class="variant-header">[THINKER] — They Have Questions Ready — Answer All of Them</div>
+      <div class="variant-body">
+        <div class="cue-note">They likely opened with a structured question: "I received your letter. Can you explain what this is, who you are, and how the process works?" Be ready. Do not give vague answers.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Absolutely. Let me pull up your file first so I can give you specific answers about your case, not just general information.</div>
+        <div class="cue-note">Pull the file. Then answer each question in sequence. Specific, factual, complete. If you do not know something — "Let me verify that and get back to you" is the correct answer. Never guess with a Thinker.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="branch-block">
+    <div class="branch-label">Branch Logic</div>
+    <div class="branch-item">IF case identified and prospect engaged → <span class="branch-node" onclick="goNode(3)">ENGAGEMENT</span> (adapt for inbound context)</div>
+    <div class="branch-item">IF prospect just wants information → <span class="branch-node" onclick="goNode(8)">SOLUTION</span> then <span class="branch-node" onclick="goNode(9)">TRANSITION</span></div>
+    <div class="branch-item">IF prospect remains skeptical → <span class="branch-node" onclick="goNode(16)">CREDIBILITY_OBJECTION</span></div>
+  </div>
+</div>
+
+<!-- ═══ NODE 22: RE_PRESENT_VALUE ═══ -->
+<div class="node" id="node-22">
+  <div class="node-header">
+    <div class="node-id-line"><span>NODE 22</span><span class="node-tag tag-followup">FOLLOW-UP</span></div>
+    <div class="node-title">RE_PRESENT_VALUE &mdash; Re-Present Value</div>
+    <div class="node-meta">NEPQ: Connection (re-establish) + Solution Awareness (condensed) | Voss: Labeling + Contrast | Tone: COLLABORATIVE</div>
+  </div>
+  <div class="node-intro">Triggered from RECONNECT when prospect did not review materials. Do not restart from ENGAGEMENT. Re-brief in condensed form and bridge to EDUCATE.</div>
+
+  <div class="variant" data-v="U" id="22-U">
+    <div class="variant-block" data-v="U">
+      <div class="variant-header">[UNDETERMINED] — Acknowledge, Condense, Re-Anchor</div>
+      <div class="variant-body">
+        <div class="cue-note">Tone: COLLABORATIVE. No guilt, no pressure. Treat not reading as completely normal.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>No problem at all — life gets busy. Let me just take two minutes and give you the short version of what I sent over, so you have the picture in your head.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>So quick recap: [REPORTING COMPANY] issued a payment of [AMOUNT] back in [YEAR], it never made it to you, and it ended up getting turned over to the State of Texas. That's what our research flagged.</div>
+        <div class="cue-note">PAUSE. Brief beat. Then the contrast:</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>The reason I wanted to follow up is that the State's process for getting that money released is genuinely more complicated than most people expect — and there's a specific piece of it that most people don't know about, which is actually what I wanted to walk you through today.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Do you have a couple of minutes right now?</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="D" id="22-D">
+    <div class="variant-block" data-v="D">
+      <div class="variant-header">[DIRECTOR] — Skip the Apology, Get to the Point Fast</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>[NAME], quick recap since you haven't had a chance to look it over: [AMOUNT] from [COMPANY], turned over to the State. The State's process to recover it takes most people six-plus months. Our clients average 45 to 60 days. That's the version of the story. Two minutes — does that work?</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="S" id="22-S">
+    <div class="variant-block" data-v="S">
+      <div class="variant-header">[SOCIALIZER] — Light Touch on Not Reading, Re-Hook Fast</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>No worries at all — honestly, I probably sent you way more than anyone actually reads. Let me just give you the two-minute version.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>So the short story: [REPORTING COMPANY] had a payment of [AMOUNT] in your name, it never made it to you, and it ended up with the State of Texas. What I really wanted to walk you through today is something about the State's process that most people don't realize — and it's actually pretty eye-opening.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>You have a couple of minutes?</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="R" id="22-R">
+    <div class="variant-block" data-v="R">
+      <div class="variant-header">[RELATER] — Gentle, Reassuring, No Pressure</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Oh, please don't worry about that at all — that's exactly why I called. I would rather walk you through it personally anyway, honestly.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>So let me just give you a quick recap. According to our research, [REPORTING COMPANY] tried to issue you a payment of [AMOUNT] back in [YEAR] — it never reached you, and it ended up being turned over to the State of Texas. That's what we found.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>What I wanted to go over with you today is really just one part of the State's process that most people aren't aware of — and I think once you hear it, it will make a lot of things clearer. Is now still an okay time?</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="T" id="22-T">
+    <div class="variant-block" data-v="T">
+      <div class="variant-header">[THINKER] — Efficient Re-Briefing, Flag What's Coming</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Not a problem. Let me give you a concise summary so we're working from the same information. According to our records, [REPORTING COMPANY] reported a payment of [EXACT AMOUNT] as abandoned in [YEAR]. The funds were subsequently turned over to the State of Texas under Texas Property Code Chapter 74.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>What I specifically wanted to cover with you today is the legal distinction between what the State requires by statute and what they ask for under administrative policy — because that distinction is directly relevant to how long recovery takes.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Do you have a few minutes to go through that?</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="branch-block">
+    <div class="branch-label">Branch Logic</div>
+    <div class="branch-item">IF Prospect re-engages → <span class="branch-node" onclick="goNode(11)">EDUCATE</span></div>
+    <div class="branch-item">IF Prospect says not now → <span class="branch-node" onclick="goNode(2)">CALLBACK_SCHEDULE</span></div>
+    <div class="branch-item">IF Not interested → <span class="branch-node" onclick="goNode(14)">OBJECTION_HANDLING</span></div>
+  </div>
+</div>
+
+<!-- ═══ NODE 23: VOICEMAIL ═══ -->
+<div class="node" id="node-23">
+  <div class="node-header">
+    <div class="node-id-line"><span>NODE 23</span><span class="node-tag tag-neutral">NEUTRAL</span></div>
+    <div class="node-title">VOICEMAIL &mdash; No Answer Script</div>
+    <div class="node-meta">NEPQ: Connection (attempt) | Voss: Hook before ask | Tone: COLLABORATIVE / NATURAL</div>
+  </div>
+  <div class="node-intro">Single personality-neutral script. Type is unknown. Keep under 30 seconds. Goal: get them curious enough to call back or pick up the next attempt.</div>
+
+  <div class="compliance-block">Do not state the dollar amount in the voicemail. Message may be heard by third parties. Reference only that there is a case involving the prospect and a company.</div>
+
+  <div class="variant visible" id="23-ALL">
+    <div class="variant-block" data-v="ALL">
+      <div class="variant-header">[ALL TYPES] — Single Neutral Voicemail Script</div>
+      <div class="variant-body">
+        <div class="cue-note">Keep under 30 seconds. Speak at a natural, unhurried pace. Say your number twice, slowly.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Hi, this message is for [CLIENT NAME]. My name is [AGENT NAME], I'm calling from Stealth Investigations. I'm reaching out because our research team flagged something in your name that I wanted to make sure you were aware of — it involves [REPORTING COMPANY]. It's important enough that I'd really like to speak with you directly.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>I'll try you again, but if you'd like to reach me first my number is [AGENT DIRECT NUMBER]. Again, that's [AGENT DIRECT NUMBER]. Thanks, [CLIENT NAME].</div>
+        <div class="cue-note">Maximum 2 voicemails per prospect total. After two with no response, continue dial attempts without leaving a message.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="branch-block">
+    <div class="branch-label">Branch Logic</div>
+    <div class="branch-item">Log as <span class="branch-dispo">DISPOSITION: VOICEMAIL</span></div>
+    <div class="branch-item">Schedule next dial attempt</div>
+  </div>
+</div>
+
+<!-- ═══ NODE 24: FOLLOWUP_60DAY ═══ -->
+<div class="node" id="node-24">
+  <div class="node-header">
+    <div class="node-id-line"><span>NODE 24</span><span class="node-tag tag-followup">FOLLOW-UP</span></div>
+    <div class="node-title">FOLLOWUP_60DAY &mdash; 60-Day DIY Callback</div>
+    <div class="node-meta">NEPQ: Connection (re-establish) + Consequence (lived experience) | Voss: Labeling + Future Pacing | Tone: COLLABORATIVE + CONCERNED</div>
+  </div>
+  <div class="node-intro">Prospect chose to try the State's process themselves 60 days ago. Their experience — whatever it is — is your opening. Three sub-paths: frustrated/stalled (most common), making progress (rare), quietly did nothing. Load personality type from Call 1.</div>
+
+  <div class="variant" data-v="U" id="24-U">
+    <div class="variant-block" data-v="U">
+      <div class="variant-header">[UNDETERMINED] — Open with the Experience, Let Them Tell You</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Hi [CLIENT NAME], this is [AGENT NAME] with Stealth Investigations. We spoke about two months ago about the [REPORTING COMPANY] case — I wanted to check in and see how things have been going with the State. Is now a bad time?</div>
+        <div class="cue-note">Voss: No-Oriented. Wait. Then:</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>So tell me — how has the process been going?</div>
+        <div class="cue-note">WAIT. Three paths based on their answer:</div>
+        <div class="cue-note">PATH A — Getting the runaround (most likely): Let them vent fully. Then:</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>That is exactly what I was afraid of when we talked. What you're describing is the second wave — the one I mentioned — and the part that most people don't make it through on their own. Is this a point where it might make sense to let us step in and take it from here?</div>
+        <div class="cue-note">PATH B — Making progress (rare): Validate it, exit gracefully:</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>That is genuinely good to hear. It sounds like you're in that three percent I mentioned. If things continue moving forward, you won't need us — and that's perfectly fine. If anything stalls out, you know where to find me.</div>
+        <div class="cue-note">PATH C — Did nothing: Treat like PATH A but shorter. Offer to step in now.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>I hear you. Honestly, that's the most common thing that happens. The offer still stands if you'd like to let us handle it from here.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="D" id="24-D">
+    <div class="variant-block" data-v="D">
+      <div class="variant-header">[DIRECTOR] — Fast Status Check, Efficient Path Forward</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>[NAME], [AGENT] with Stealth. Checking in on the [COMPANY] case — 60 days out. How did the State treat you?</div>
+        <div class="cue-note">Wait. One answer. Then:</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Right. That tracks exactly with what I see on these cases. You've already put in the time and you're still in the same place. We can get this resolved in the next 45 to 60 days. Do you want us to take it from here?</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="S" id="24-S">
+    <div class="variant-block" data-v="S">
+      <div class="variant-header">[SOCIALIZER] — Re-Connect First, Let Them Tell the Story</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Hey [NAME]! It's [AGENT] from Stealth — remember me? I promised I'd check back in after 60 days to see how you've been making out with the State. So... give me the update. How did it go?</div>
+        <div class="cue-note">Let them tell the whole story. Mirror the frustration. Then:</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>I mean — that's exactly what I was talking about when we spoke. You went through all of that and they still haven't moved it forward. That's not bad luck, that's just how they operate.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>So here's the question — are you ready to let someone who does this every single day just take it off your plate?</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="R" id="24-R">
+    <div class="variant-block" data-v="R">
+      <div class="variant-header">[RELATER] — Check In as a Person First, Then the Case</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Hi [NAME], it's [AGENT] from Stealth Investigations — I hope you've been well. I promised I'd call back around this point to see how things were going with the State. I've been thinking about your case, honestly. Did you have a chance to work on it?</div>
+        <div class="cue-note">Let them answer fully. Then:</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>I really appreciate you being honest with me about that. I know dealing with a process like this on top of everything else in life is genuinely a lot.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>If you'd like, we can step in right now and take all of that off your hands completely. You wouldn't have to deal with any of it from this point forward. Would that be something you'd feel comfortable with?</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="T" id="24-T">
+    <div class="variant-block" data-v="T">
+      <div class="variant-header">[THINKER] — Structured Status Assessment, Data-Led Re-Engagement</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>Hi [NAME], [AGENT] from Stealth Investigations following up as promised. I wanted to check on the status of the [COMPANY] case. Specifically — did you receive an initial document request from the State, and if so, have you had a chance to respond to it?</div>
+        <div class="cue-note">Their answer tells you exactly what stage they are at. Respond to the specific stage:</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Based on what you're describing, you've hit the point where most DIY claimants stall. The next phase — the Examiner assignment and secondary document request — typically adds another 60 to 90 days minimum, and the secondary list is different from and in addition to what you've already provided.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>At this stage, given what you've already put in, does it make logical sense to bring us in to execute the rest rather than continuing to manage it yourself?</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="branch-block">
+    <div class="branch-label">Branch Logic</div>
+    <div class="branch-item">IF Prospect wants to proceed → <span class="branch-node" onclick="goNode(13)">COMMITMENT</span></div>
+    <div class="branch-item">IF Prospect still wants to try → <span class="branch-dispo">DISPOSITION: FOLLOWUP_REQUIRED</span></div>
+    <div class="branch-item">IF Made it through successfully → <span class="branch-dispo">DISPOSITION: NO_INTEREST</span> (congratulate, close file)</div>
+    <div class="branch-item">IF Not interested → <span class="branch-dispo">DISPOSITION: NO_INTEREST</span></div>
+  </div>
+</div>
+
+<!-- ═══ NODE 25: SUPERVISOR_CALLBACK ═══ -->
+<div class="node" id="node-25">
+  <div class="node-header">
+    <div class="node-id-line"><span>NODE 25</span><span class="node-tag tag-followup">FOLLOW-UP</span></div>
+    <div class="node-title">SUPERVISOR_CALLBACK &mdash; Fee Negotiation (Kathy)</div>
+    <div class="node-meta">NEPQ: Connection (re-establish) + Commitment | Voss: No-Oriented Close + Authority Frame | Tone: AUTHORITATIVE + COLLABORATIVE</div>
+  </div>
+  <div class="node-intro">Triggered from FEE_OBJECTION. Kathy calls back. Prospect already agreed to this callback — they are warm. Reference the original agent by name. Rate authority: full. Kathy closes on the call or hands back to the original agent — her judgment.</div>
+
+  <div class="variant" data-v="U" id="25-U">
+    <div class="variant-block" data-v="U">
+      <div class="variant-header">[UNDETERMINED] — Standard Kathy Callback</div>
+      <div class="variant-body">
+        <div class="cue-note">Kathy should be briefed by the original agent: prospect name, case details, rate concern raised, any number the prospect suggested.</div>
+        <div class="script-line"><div class="agent-label">KATHY</div>Hi [CLIENT NAME], this is Kathy — I'm a supervisor here at Stealth Investigations. [AGENT NAME] passed along your conversation and asked me to reach out personally. Is now a bad time?</div>
+        <div class="script-line"><div class="agent-label">KATHY</div>I understand you had some questions about our fee structure on this case, and [AGENT] wanted to make sure you got a straight answer from someone who could actually address that. So — what were you thinking would feel fair to you?</div>
+        <div class="cue-note">IF their number is acceptable:</div>
+        <div class="script-line"><div class="agent-label">KATHY</div>You know what — on a case like this, involving [REPORTING COMPANY] and the amount we're talking about, I'm comfortable working with you on that. Here's what I'd like to do: let's lock in [AGREED RATE]% and get the paperwork moving. Does that work for you?</div>
+        <div class="cue-note">IF their number is too low but Kathy wants to close on this call:</div>
+        <div class="script-line"><div class="agent-label">KATHY</div>I appreciate you being direct with me. I can't go as low as [THEIR NUMBER], but I can come down to [KATHY'S NUMBER]% on this case. That's as far as I can go and still make it work on our end. Would you be comfortable moving forward at that?</div>
+        <div class="cue-note">IF Kathy wants to hand back to the original agent:</div>
+        <div class="script-line"><div class="agent-label">KATHY</div>Here's what I'm going to do. I'll authorize [AGREED RATE]% on this case and have [AGENT NAME] get back to you with the paperwork. You should hear from them within the hour. Does that work?</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="D" id="25-D">
+    <div class="variant-block" data-v="D">
+      <div class="variant-header">[DIRECTOR] — Short, Direct, Rate First</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">KATHY</div>[NAME], this is Kathy at Stealth Investigations. [AGENT] told me you had a question about our rate. What number were you thinking?</div>
+        <div class="cue-note">Whatever they say — if acceptable:</div>
+        <div class="script-line"><div class="agent-label">KATHY</div>I can work with that. Here's what I need from you: confirm you want to move forward and I'll have [AGENT] send you the paperwork today.</div>
+        <div class="cue-note">If too low:</div>
+        <div class="script-line"><div class="agent-label">KATHY</div>I can't do [THEIR NUMBER]. I can do [KATHY'S NUMBER]%. That's my best number. Are we doing this?</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="S" id="25-S">
+    <div class="variant-block" data-v="S">
+      <div class="variant-header">[SOCIALIZER] — Warm Introduction, Make Them Feel Taken Care Of</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">KATHY</div>Hi [NAME]! It's Kathy — I'm one of the supervisors here at Stealth Investigations. [AGENT] mentioned your conversation and I wanted to call you personally because I think we can work something out here. How are you doing today?</div>
+        <div class="cue-note">Brief warmup — 20 seconds max. Then:</div>
+        <div class="script-line"><div class="agent-label">KATHY</div>So [AGENT] said you had a question about the fee structure. I want to make sure you feel good about this before we move forward. What were you thinking on the rate?</div>
+        <div class="script-line"><div class="agent-label">KATHY</div>You know what — I want to make this happen for you. Let's do [AGREED/NEGOTIATED RATE]% and get this thing moving. How does that sound?</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="R" id="25-R">
+    <div class="variant-block" data-v="R">
+      <div class="variant-header">[RELATER] — Reassure First, Then Rate</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">KATHY</div>Hi [NAME], this is Kathy — I'm a supervisor at Stealth Investigations. [AGENT NAME] filled me in on your situation and asked me to reach out personally. I just want to make sure you feel completely taken care of here.</div>
+        <div class="script-line"><div class="agent-label">KATHY</div>I understand you had some questions about our fee, and I want to address that directly. What would make you feel comfortable moving forward?</div>
+        <div class="script-line"><div class="agent-label">KATHY</div>I hear you. Here's what I'm going to do — I'm going to authorize [NEGOTIATED RATE]% on your case. [AGENT NAME] will take it from here and walk you through every step. You're in good hands. Does that feel okay to you?</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant" data-v="T" id="25-T">
+    <div class="variant-block" data-v="T">
+      <div class="variant-header">[THINKER] — Structured, Rate Parameters, No Soft Sell</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">KATHY</div>Hi [NAME], this is Kathy, supervising here at Stealth Investigations. [AGENT] passed along the case details. I've reviewed the [REPORTING COMPANY] file and I'd like to discuss the fee structure with you directly.</div>
+        <div class="script-line"><div class="agent-label">KATHY</div>Our standard rate is 10%. Based on the specifics of your case, I have flexibility to work below that. What I need to understand is what number you'd need to see to feel that the value proposition makes sense for you.</div>
+        <div class="cue-note">IF their number is workable:</div>
+        <div class="script-line"><div class="agent-label">KATHY</div>That's within what I can authorize. Here are the terms: [NEGOTIATED RATE]% contingency, due only upon State release of funds to you. Nothing is owed if we are unsuccessful. Does that structure work for you?</div>
+        <div class="cue-note">IF too low:</div>
+        <div class="script-line"><div class="agent-label">KATHY</div>I appreciate the directness. I can't get to [THEIR NUMBER] and still deliver what we've promised you in terms of resources and timeline. My authorized floor on this case is [KATHY'S NUMBER]%. If that works for you, I can have the paperwork initiated today.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="branch-block">
+    <div class="branch-label">Branch Logic</div>
+    <div class="branch-item">IF Kathy closes on the call → <span class="branch-dispo">DISPOSITION: SALE_CLOSED</span></div>
+    <div class="branch-item">IF Kathy sets terms and hands back → original agent sends paperwork → <span class="branch-dispo">DISPOSITION: SALE_CLOSED</span></div>
+    <div class="branch-item">IF Prospect declines even after negotiation → <span class="branch-dispo">DISPOSITION: NO_INTEREST</span></div>
+    <div class="branch-item">IF Prospect needs more time → <span class="branch-dispo">DISPOSITION: FOLLOWUP_REQUIRED</span></div>
+  </div>
+</div>
+
+<!-- ═══ NODE 26: WRONG_NUMBER ═══ -->
+<div class="node" id="node-26">
+  <div class="node-header">
+    <div class="node-id-line"><span>NODE 26</span><span class="node-tag tag-neutral">COMPLIANCE</span></div>
+    <div class="node-title">WRONG_NUMBER &mdash; Incorrect Contact Protocol</div>
+    <div class="node-meta">Protocol only — no personality variants | Compliance-sensitive</div>
+  </div>
+  <div class="node-intro">Three scenarios. Do not reveal reason for call to third parties. Do not ask third parties to pass messages. Do not attempt to obtain alternate contact info from the person who answers.</div>
+
+  <div class="compliance-block">Never reveal the reason for the call to a third party. Leave voicemail only when the prospect's own voicemail picks up.</div>
+
+  <div class="variant visible" id="26-ALL">
+    <div class="variant-block" data-v="ALL">
+      <div class="variant-header">SCENARIO A — Person says they are not [CLIENT NAME]</div>
+      <div class="variant-body">
+        <div class="cue-note">Verify before exiting. People sometimes deflect calls they do not want to take.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>Oh, I apologize for the confusion. I'm looking for [CLIENT NAME] — do I have the right number, or is this a different household?</div>
+        <div class="cue-note">IF confirmed wrong number: polite exit only. Do not ask them to pass a message. Do not ask for a forwarding number.</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>I'm sorry to have bothered you. Thank you for letting me know.</div>
+        <div class="cue-note">Log WRONG_NUMBER. Flag case for skip trace team.</div>
+      </div>
+    </div>
+
+    <div class="variant-block" data-v="ALL" style="margin-top:10px">
+      <div class="variant-header">SCENARIO B — Person says [CLIENT NAME] is not available</div>
+      <div class="variant-body">
+        <div class="script-line"><div class="agent-label">AGENT</div>No problem at all. Is there a better time I could try reaching them directly?</div>
+        <div class="cue-note">If they ask what it is regarding:</div>
+        <div class="script-line"><div class="agent-label">AGENT</div>It's a personal matter — I really do need to speak with [CLIENT NAME] directly. I'll try again another time. Thank you.</div>
+        <div class="cue-note">Do not leave a message with the third party. Do not ask for alternate contact info.</div>
+      </div>
+    </div>
+
+    <div class="variant-block" data-v="ALL" style="margin-top:10px">
+      <div class="variant-header">SCENARIO C — Number disconnected, non-working, or fax line</div>
+      <div class="variant-body">
+        <div class="cue-note">Log WRONG_NUMBER with note specifying: disconnected / fax / non-working. Flag case for skip trace team. Do not attempt further dials on this number.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="branch-block">
+    <div class="branch-label">Branch Logic</div>
+    <div class="branch-item">Confirmed wrong number → <span class="branch-dispo">DISPOSITION: WRONG_NUMBER</span> — flag for skip trace</div>
+    <div class="branch-item">Prospect unavailable, callback time obtained → <span class="branch-dispo">DISPOSITION: CALLBACK</span></div>
+    <div class="branch-item">Disconnected / non-working → <span class="branch-dispo">DISPOSITION: WRONG_NUMBER</span> — no further dials on this number</div>
+  </div>
+</div>
+
+</div><!-- end #main -->
+</div><!-- end #layout -->
+
+<div id="nav-arrows">
+  <button class="nav-arrow" onclick="prevNode()">&#8592; PREV</button>
+  <button class="nav-arrow" onclick="nextNode()">NEXT &#8594;</button>
+</div>
+
+<script>
+  let currentType = 'U';
+  let currentNode = 1;
+  const totalNodes = 26;
+
+  // Nodes where variant display is always "ALL" regardless of type selector
+  const universalNodes = [2, 14, 23, 26];
+  // Nodes that use variant blocks with data-v="ALL" in specific places
+  // (but show typed variants too - handled by data-v matching)
+
+  function setType(type) {
+    currentType = type;
+    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector(`.type-btn[data-type="${type}"]`).classList.add('active');
+    showVariantsForCurrentNode();
+  }
+
+  function showVariantsForCurrentNode() {
+    const nodeEl = document.getElementById(`node-${currentNode}`);
+    if (!nodeEl) return;
+
+    // Hide all variants in current node
+    nodeEl.querySelectorAll('.variant').forEach(v => v.classList.remove('visible'));
+
+    if (universalNodes.includes(currentNode)) {
+      // Show the ALL variant
+      const allV = nodeEl.querySelector('.variant[id$="-ALL"]');
+      if (allV) allV.classList.add('visible');
+    } else {
+      // Try to show the typed variant
+      const typedV = nodeEl.querySelector(`#${currentNode}-${currentType}`);
+      if (typedV) {
+        typedV.classList.add('visible');
+      } else {
+        // Fall back to UNDETERMINED
+        const undeterV = nodeEl.querySelector(`#${currentNode}-U`);
+        if (undeterV) undeterV.classList.add('visible');
+      }
+      // Also show ALL variant if present (for mixed nodes like 14)
+      const allV = nodeEl.querySelector('.variant[id$="-ALL"]');
+      if (allV) allV.classList.add('visible');
+    }
+  }
+
+  function goNode(n) {
+    if (n < 1 || n > totalNodes) return;
+
+    // Deactivate current
+    const prevEl = document.getElementById(`node-${currentNode}`);
+    if (prevEl) prevEl.classList.remove('visible');
+    const prevNav = document.querySelector(`.nav-item[data-node="${currentNode}"]`);
+    if (prevNav) prevNav.classList.remove('active');
+
+    currentNode = n;
+
+    // Activate new
+    const newEl = document.getElementById(`node-${currentNode}`);
+    if (newEl) newEl.classList.add('visible');
+    const newNav = document.querySelector(`.nav-item[data-node="${currentNode}"]`);
+    if (newNav) {
+      newNav.classList.add('active');
+      newNav.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // Update header display
+    document.getElementById('node-num').textContent = currentNode;
+    const nodeIds = {
+      1:'START', 2:'CALLBACK_SCHEDULE', 3:'ENGAGEMENT', 4:'NOT_AWARE_PATH',
+      5:'AWARE_PATH', 6:'AWARE_ATTEMPTED', 7:'CONSEQUENCE', 8:'SOLUTION',
+      9:'TRANSITION', 10:'RECONNECT', 11:'EDUCATE', 12:'QUALIFY',
+      13:'COMMITMENT', 14:'OBJECTION_HANDLING', 15:'INTERESTED_NOT_SURE',
+      16:'CREDIBILITY_OBJECTION', 17:'FEE_OBJECTION', 18:'DIY_OBJECTION',
+      19:'UNKNOWN_OBJECTION', 20:'SOFT_CLOSE', 21:'INBOUND_START',
+      22:'RE_PRESENT_VALUE', 23:'VOICEMAIL', 24:'FOLLOWUP_60DAY',
+      25:'SUPERVISOR_CALLBACK', 26:'WRONG_NUMBER'
+    };
+    document.getElementById('node-id-display').textContent = nodeIds[currentNode] || '';
+
+    showVariantsForCurrentNode();
+
+    // Scroll main to top
+    document.getElementById('main').scrollTop = 0;
+  }
+
+  function prevNode() { goNode(currentNode - 1); }
+  function nextNode() { goNode(currentNode + 1); }
+
+  // Keyboard navigation
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') nextNode();
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') prevNode();
+    if (e.key === '1') setType('U');
+    if (e.key === '2') setType('D');
+    if (e.key === '3') setType('S');
+    if (e.key === '4') setType('R');
+    if (e.key === '5') setType('T');
+  });
+
+  // Initialize
+  showVariantsForCurrentNode();
+</script>
+</body>
+</html>
